@@ -1,0 +1,9 @@
+lakehouse_profile:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: my-gcp-project
+      dataset: ecommerce_silver
+      threads: 4

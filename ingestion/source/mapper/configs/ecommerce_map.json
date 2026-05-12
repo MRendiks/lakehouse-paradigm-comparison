@@ -1,0 +1,4 @@
+{
+  "source_fields": ["user_id", "item_id", "price", "timestamp"],
+  "target_fields": ["id", "product_id", "amount", "created_at"]
+}
