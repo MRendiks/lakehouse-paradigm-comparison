@@ -8,11 +8,15 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "infisicalsdk",
+    "typer>=0.9.0",
     "confluent-kafka>=2.0.0",
+    "google-cloud-storage>=2.0.0",
+    "loguru>=0.7.0",
+    "jmespath>=1.0.1"
 ]
 
 [project.scripts]
-ingestion-run = "source.main:main"
+ingestion-run = "source.main:app"
 
 [tool.uv]
 package = true
