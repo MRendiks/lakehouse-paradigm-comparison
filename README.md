@@ -80,6 +80,7 @@ Follow these steps to set up and run the repository:
 - [Terraform](https://developer.hashicorp.com/terraform/downloads)
 - [Python 3.10+](https://www.python.org/downloads/)
 - [Minikube](https://minikube.sigs.k8s.io/docs/start/) (for local Kafka testing)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ### 2. Authenticate with Google Cloud
 Open your terminal and authenticate to your GCP account. This will provide Application Default Credentials (ADC) for both Terraform and Python.
