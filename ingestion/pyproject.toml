@@ -1,0 +1,61 @@
+[project]
+name = "lakehouse-ingestion-engine"
+version = "0.1.0"
+description = "Ingestion Engine for Lakehouse Paradigm Comparison"
+authors = [{ name = "Muhamad Rendi", email = "muh.rendiks@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "infisicalsdk",
+    "confluent-kafka>=2.0.0",
+]
+
+[project.scripts]
+ingestion-run = "source.main:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["source"]
+
+[tool.hatch.build.targets.wheel]
+include = ["source"]
+
+# ----------------------------------------------------------
+#                 RUFF CONFIGURATION
+# ----------------------------------------------------------
+[tool.ruff]
+src = ["source"]
+
+select = [
+    "F",    # Pyflakes
+    "E",    # Pycodestyle errors
+    "W",    # Pycodestyle warnings
+    "I",    # Import sorting
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit (security)
+]
+
+ignore = [
+    "E501", # Ignore line too long (Ruff format will handle it)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["source"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # allow unused imports in __init__.py

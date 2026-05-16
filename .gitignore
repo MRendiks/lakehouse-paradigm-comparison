@@ -60,3 +60,8 @@ derby.log
 .vscode/
 .idea/
 *.log
+
+# -----------------------------
+kubectl*
+minikube-linux-*
+get_helm.sh
