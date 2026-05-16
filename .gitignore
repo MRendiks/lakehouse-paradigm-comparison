@@ -60,6 +60,7 @@ derby.log
 .vscode/
 .idea/
 *.log
+resources/
 
 # -----------------------------
 kubectl*
