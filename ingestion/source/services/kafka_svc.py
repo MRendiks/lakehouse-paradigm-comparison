@@ -63,7 +63,7 @@ class KafkaService:
             )
 
     def _send_to_dlq(self, envelope: EventEnvelope, error: str) -> None:
-        """Kirim message yang gagal ke Dead Letter Queue."""
+        """Send failed messages to the Dead Letter Queue."""
         dlq_payload = {
             "original_topic": envelope.metadata.source_topic,
             "error": error,
@@ -76,9 +76,9 @@ class KafkaService:
                 value=self._serialize(dlq_payload),
             )
             self._producer.poll(0)
-            logger.info(f"Message dikirim ke DLQ: {OlistTopic.DLQ.value}")
+            logger.info(f"Message sent to DLQ: {OlistTopic.DLQ.value}")
         except KafkaException as dlq_exc:
-            logger.critical(f"Gagal kirim ke DLQ: {dlq_exc}")
+            logger.critical(f"Failed to send to DLQ: {dlq_exc}")
 
     @staticmethod
     def _serialize(data: dict) -> bytes:
