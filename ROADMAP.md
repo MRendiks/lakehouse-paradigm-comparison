@@ -1,86 +1,148 @@
-## **🏗️ Fase 1: Identity & Security (The Foundation)**
+# 🗺️ Lakehouse Paradigm Comparison — Detailed Roadmap
 
-Sebelum menyentuh *tools* apapun, kita amankan pintunya.
+---
 
-1. **GCP Project:** Buat project di GCP Console.  
-2. **Service Account (SA):** Buat SA cloud-migrator dengan role Editor.  
-3. **IAM Binding:** Berikan email Gmail pribadimu role Service Account Token Creator pada SA tersebut.  
-4. **Local Auth:** Jalankan gcloud auth application-default login di terminal laptop.
+## ✅ Fase 1: Identity & Security *(DONE)*
 
-## ---
+Fondasi keamanan sebelum menyentuh tools apapun.
 
-**🛠️ Fase 2: Infrastructure as Code (Terraform)**
+1. **Buat GCP Project** di GCP Console.
+2. **Buat Service Account (SA)** bernama `cloud-migrator` dengan role `Editor`.
+3. **IAM Binding:** Berikan email Gmail pribadimu role `Service Account Token Creator` pada SA tersebut agar bisa *impersonate* SA tanpa file JSON.
+4. **Local Auth:** Jalankan `gcloud auth application-default login` di terminal laptop (ADC siap).
 
-Otomatisasi pembuatan "wadah" data.
+---
 
-1. **Providers:** Setup providers.tf dengan metode **Impersonation**.  
-2. **Resources:** Buat file main.tf untuk men-deploy:  
-   * **GCS Buckets:** bronze, silver, dan gold.  
-   * **BigQuery Dataset:** Sebagai target Lakehouse versi Google.  
-3. **Command:** terraform init \-\> terraform apply.
+## ✅ Fase 2: Infrastructure as Code (Terraform) *(DONE)*
 
-## ---
+Otomatisasi pembuatan "wadah" data di GCP.
 
-**🐍 Fase 3: Ingestion Engine (Python & Kafka)**
+1. **Setup `providers.tf`** dengan metode **Impersonation** (tanpa file JSON).
+2. **Buat `main.tf`** untuk men-deploy:
+   - **GCS Bucket `bronze`** — Landing zone data mentah dari Kafka.
+   - **GCS Bucket `silver`** — Data bersih hasil transformasi Spark.
+   - **GCS Bucket `gold`** — Data agregat siap konsumsi BI.
+   - **BigQuery Dataset `ecommerce_gold`** — Target Lakehouse versi Google.
+3. **Setup `variables.tf` & `terraform.tfvars`** untuk manajemen variabel.
+4. **Jalankan:** `terraform init` → `terraform plan` → `terraform apply`.
 
-Memindahkan data dari sumber ke Cloud.
+---
 
-1. **Engine Setup:** Masukkan *Clean Architecture* Python kamu ke folder ingestion/.  
-2. **Kafka:** Jalankan Kafka di Minikube. Buat producer untuk data eCommerce.  
-3. **Consumer to GCS:** Gunakan library google-cloud-storage di Python. Karena sudah ada ADC, script kamu akan langsung bisa *upload* ke bucket bronze tanpa file JSON.
+## 🔄 Fase 3: Ingestion Engine (Python & Kafka) *(IN PROGRESS)*
 
-## ---
+Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 
-**❄️ Fase 4: Snowflake Configuration (Integration)**
+### 3.1 — Project Setup ✅
+- [x] Inisialisasi folder `ingestion/` dengan *Clean Architecture* (`source/config`, `source/controller`, `source/services`).
+- [x] Setup `pyproject.toml` modern dengan `uv`, `hatchling`, dan `ruff`.
+- [x] Integrasikan **Infisical Cloud** sebagai *Secret Manager* (tanpa self-hosted DB).
+  - [x] Buat `source/config/settings.py` — Pydantic `BaseSettings` sebagai wadah konfigurasi.
+  - [x] Buat `source/services/infisical_manager.py` — `InfisicalManager` class untuk menarik semua *secrets* dari Infisical.
+- [x] Nama & versi CLI diambil otomatis dari `pyproject.toml` via `importlib.metadata`.
+- [x] ADC (`gcloud auth application-default login`) berhasil dijalankan untuk akses GCS lokal.
 
-Ini adalah langkah yang tadi terlewat. Kita hubungkan Snowflake ke GCS tanpa kunci.
+### 3.2 — Kafka Producer 🔲
+- [ ] Jalankan Kafka & Kafka-UI via **Docker Compose** (sudah ada di `docker-compose.yaml`).
+- [ ] Desain skema data eCommerce (misal: `Order`, `Product`, `User`) dalam format JSON.
+- [ ] Buat `source/services/kafka_producer.py` — service untuk mempublikasikan pesan ke topic Kafka.
+- [ ] Buat `source/controller/ingestion_ctl.py` — command CLI `engine` yang memanggil producer.
+- [ ] Test end-to-end: Pastikan pesan terkirim dan terlihat di **Kafka-UI** (`localhost:8080`).
 
-1. **Create Integration di Snowflake:**  
-   Jalankan perintah ini di *Snowflake Worksheet*:  
-   SQL  
-   CREATE STORAGE INTEGRATION gcs\_int  
-     TYPE \= EXTERNAL\_STAGE  
-     STORAGE\_ALLOWED\_LOCATIONS \= ('gcs://bronze-bucket-name/')  
-     ENABLED \= TRUE;
+### 3.3 — Kafka Consumer → GCS (Bronze) 🔲
+- [ ] Buat `source/services/kafka_consumer.py` — service untuk men-subscribe topic Kafka.
+- [ ] Buat `source/services/gcs_uploader.py` — service untuk upload file JSON ke GCS bucket `bronze`.
+  - Gunakan `google-cloud-storage` library.
+  - Gunakan ADC (lokal) atau `GCP_SERVICE_ACCOUNT_JSON` dari Infisical (Docker/prod).
+- [ ] Implementasi logika batching: kumpulkan N pesan → jadikan 1 file `.json` → upload ke `bronze/`.
+- [ ] Test end-to-end: Pastikan file JSON muncul di GCS bucket `bronze`.
 
-2. **Ambil Identitas Snowflake:**  
-   Jalankan DESC STORAGE INTEGRATION gcs\_int;. Ambil nilai pada kolom **STORAGE\_GCP\_SERVICE\_ACCOUNT** (biasanya berupa email).  
-3. **Handshake di GCP:**  
-   Buka GCP Console \> GCS Bucket bronze \> Permissions. Tambahkan email dari Snowflake tadi sebagai **Principal** dengan role **Storage Object Viewer**.  
-4. **Create Stage:** Di Snowflake, buat *Stage* yang mengarah ke bucket GCS tersebut. Sekarang Snowflake bisa membaca data di GCS secara *real-time*.
+---
 
-## ---
+## 🔲 Fase 4: Snowflake Configuration (Integration)
 
-**🧱 Fase 5: Databricks Configuration (Processing)**
+Menghubungkan Snowflake ke GCS bucket `bronze` tanpa file kunci/JSON.
 
-Databricks akan berperan sebagai mesin pengolah (Spark) di atas GCS.
+1. **Create Storage Integration** di Snowflake Worksheet:
+   ```sql
+   CREATE STORAGE INTEGRATION gcs_int
+     TYPE = EXTERNAL_STAGE
+     STORAGE_PROVIDER = 'GCS'
+     STORAGE_ALLOWED_LOCATIONS = ('gcs://nama-bronze-bucket/')
+     ENABLED = TRUE;
+   ```
+2. **Ambil Identitas Snowflake:** Jalankan `DESC INTEGRATION gcs_int;` dan catat nilai `STORAGE_GCP_SERVICE_ACCOUNT` (sebuah email GCP milik Snowflake).
+3. **Handshake di GCP:**
+   - Buka GCP Console → GCS Bucket `bronze` → tab **Permissions**.
+   - Tambahkan email Snowflake sebagai **Principal** dengan role **`Storage Object Viewer`**.
+4. **Create External Stage** di Snowflake:
+   ```sql
+   CREATE STAGE my_gcs_stage
+     URL = 'gcs://nama-bronze-bucket/'
+     STORAGE_INTEGRATION = gcs_int;
+   ```
+5. **Verifikasi:** Jalankan `LIST @my_gcs_stage;` — file JSON dari Fase 3 harus terlihat.
 
-1. **Cluster Setup:** Buat cluster di Databricks (bisa gunakan Community Edition).  
-2. **GCS Access:** Ada dua cara *keyless* di Databricks:  
-   * **Metode 1 (Mounting):** Menggunakan *Instance Profile* jika Databricks berjalan di dalam GCP.  
-   * **Metode 2 (Session Token):** Menggunakan token sementara dari Service Account yang di-generate via Python/CLI.  
-3. **Spark Job:** Tulis kode PySpark untuk:  
-   * Membaca JSON dari bronze.  
-   * Melakukan transformasi (cleansing/filtering).  
-   * Menyimpan ke folder silver dalam format **Delta Lake**.
+---
 
-## ---
+## 🔲 Fase 5: Databricks Configuration (Processing)
 
-**🔄 Fase 6: Transformation (dbt)**
+Databricks sebagai mesin pengolah Spark di atas GCS.
 
-Mengelola logika bisnis di satu tempat untuk dua platform berbeda.
+1. **Cluster Setup:** Buat cluster di Databricks (gunakan *Community Edition* atau akun trial).
+2. **Setup GCS Access (Keyless):**
+   - Buat *Service Account* GCP baru untuk Databricks dengan role `Storage Object Admin` pada bucket `bronze` & `silver`.
+   - Copy isi file JSON SA → simpan sebagai *Databricks Secret* (`dbutils.secrets`).
+3. **Konfigurasi Spark di Notebook:**
+   ```python
+   spark.conf.set("fs.gs.auth.service.account.json.keyfile", dbutils.secrets.get(...))
+   ```
+4. **Tulis PySpark Job** (`transformation/spark/bronze_to_silver.py`):
+   - Baca JSON dari `bronze/` → parse & validasi skema.
+   - Lakukan transformasi (cleansing, filtering, type casting).
+   - Simpan ke `silver/` dalam format **Delta Lake** (`.delta`).
+5. **Test:** Verifikasi file Delta muncul di GCS bucket `silver`.
 
-1. **Project Setup:** Inisialisasi dbt di folder transformation/.  
-2. **Profiles.yml:** Konfigurasi dua target: bigquery dan snowflake.  
-3. **Unified Models:** Buat model SQL (misal: dim\_products.sql). Dengan dbt, kode yang sama bisa dijalankan di BigQuery maupun Snowflake untuk membandingkan hasilnya.
+---
 
-## ---
+## 🔲 Fase 6: Transformation (dbt)
 
-**📊 Fase 7: Analysis & Documentation**
+Mengelola logika bisnis SQL di satu tempat untuk dua platform.
 
-Langkah terakhir untuk mempercantik portofoliomu.
+1. **Inisialisasi dbt Project:**
+   ```bash
+   dbt init transformation
+   ```
+2. **Setup `profiles.yml`** dengan dua *target*:
+   - `bigquery` — terhubung ke dataset BigQuery `ecommerce_gold`.
+   - `snowflake` — terhubung ke database Snowflake.
+3. **Buat Source Definition** (`models/sources.yml`) yang menunjuk ke tabel/stage dari Fase 3-5.
+4. **Buat Unified SQL Models:**
+   - `models/staging/stg_orders.sql`
+   - `models/staging/stg_products.sql`
+   - `models/marts/dim_products.sql`
+   - `models/marts/fct_orders.sql`
+5. **Jalankan di dua platform:**
+   ```bash
+   dbt run --target bigquery
+   dbt run --target snowflake
+   ```
+6. **Verifikasi:** Bandingkan hasil query dan output dari kedua platform.
 
-1. **Benchmark:** Bandingkan performa *query* dan biaya antara BigQuery dan Snowflake.  
-2. **Lineage:** Generate dokumentasi dbt (dbt docs generate) untuk melihat alur data.  
-3. **README:** Tuliskan temuanmu di README.md utama, sertakan diagram arsitektur yang sudah kita bahas.
+---
 
+## 🔲 Fase 7: Analysis & Documentation
+
+Langkah akhir untuk mempercantik portofolio.
+
+1. **Benchmark Performa & Biaya:**
+   - Jalankan query yang sama di BigQuery dan Snowflake.
+   - Catat: waktu eksekusi, bytes di-scan, dan estimasi biaya.
+2. **Generate Lineage Diagram:**
+   ```bash
+   dbt docs generate
+   dbt docs serve
+   ```
+3. **Tulis README.md Utama:**
+   - Arsitektur diagram (Mermaid atau gambar).
+   - Perbandingan hasil benchmark BigQuery vs Snowflake.
+   - Keputusan desain dan *lessons learned*.
