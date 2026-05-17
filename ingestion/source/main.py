@@ -1,7 +1,7 @@
 from typing import Optional
 
 import typer
-from source.controller import ingestion_ctl
+from source.controller import producer
 
 import importlib.metadata
 
@@ -17,7 +17,7 @@ except importlib.metadata.PackageNotFoundError:
 
 app = typer.Typer()
 
-app.add_typer(ingestion_ctl.app, name="ingestion-ctl")
+app.add_typer(producer.app, name="producer")
 
 
 def _version_callback(value: bool) -> None:

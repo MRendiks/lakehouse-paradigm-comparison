@@ -97,24 +97,24 @@ class EventEnvelope(BaseModel):
         source_system: str = "olist-csv-producer",
     ) -> "EventEnvelope":
         """
-        Factory method — buat EventEnvelope dengan otomatis mengisi metadata.
+        Factory method — creates an EventEnvelope by automatically populating the metadata.
 
         Args:
-            topic: OlistTopic enum — topic tujuan (digunakan untuk source_topic & event_type)
-            entity_type: nama entity, contoh: 'order', 'customer'
-            payload: raw data dari CSV row (dict)
-            pipeline_run_id: optional ID untuk batch tracking
-            ingestion_env: environment target ('dev', 'staging', 'prod')
-            source_system: nama producer service
+            topic: OlistTopic enum — destination topic (used for source_topic & event_type)
+            entity_type: entity name, e.g., ‘order’, ‘customer’
+            payload: raw data from a CSV row (dict)
+            pipeline_run_id: optional ID for batch tracking
+            ingestion_env: target environment (‘dev’, ‘staging’, ‘prod’)
+            source_system: producer service name
 
         Returns:
-            EventEnvelope siap diproduce ke Kafka
+            EventEnvelope ready to be produced to Kafka
 
         Example:
             >>> envelope = EventEnvelope.create(
             ...     topic=OlistTopic.ORDERS,
             ...     entity_type="order",
-            ...     payload={"order_id": "abc123", "status": "delivered"},
+            ...     payload={“order_id”: “abc123”, ‘status’: “delivered”},
             ...     pipeline_run_id="run-2026-05-16",
             ... )
         """
