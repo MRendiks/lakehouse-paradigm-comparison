@@ -371,6 +371,59 @@ uv run ingestion-run consumer-to-gcs stream \
 
 > **Group ID versioning:** Bumping the version suffix (e.g. `v0.0.1` → `v0.0.2`) resets the consumer offset, allowing full historical replay without touching Kubernetes manifests.
 
+
+---
+
+### 9. Run DBT
+
+To run and test the dbt transformation pipeline manually across both warehouse paradigms, navigate to the dbt project folder and execute the following instructions:
+
+```bash
+# 1. Navigate to the dbt project directory
+cd transformation/dbt_project
+```
+
+### 1. Google BigQuery Execution
+BigQuery external tables are fully managed via Terraform. No manual table initialization is required.
+
+```bash
+# Run the dbt models to materialize gold tables in ecommerce_gold
+uv run dbt run --profiles-dir . --target bigquery
+
+# Run data quality tests (not_null, unique, accepted_values, relationships)
+uv run dbt test --profiles-dir . --target bigquery
+```
+
+### 2. Snowflake Execution
+Snowflake external tables must be registered over the GCS Silver stage before executing models.
+
+```bash
+# Set Snowflake authentication environment variables
+$env:SNOWFLAKE_ACCOUNT="GHVRUEH-TX23081"
+$env:SNOWFLAKE_USER="RENDAKS"
+$env:SNOWFLAKE_PASSWORD="Your_Password_Here"
+
+# Initialize/recreate Snowflake external tables over Delta GCS stage
+uv run dbt run-operation create_external_tables --profiles-dir . --target snowflake
+
+# Run dbt models to materialize gold tables in the GOLD schema
+uv run dbt run --profiles-dir . --target snowflake
+
+# Run data quality tests
+uv run dbt test --profiles-dir . --target snowflake
+```
+
+### 3. Generate Interactive Documentation & Lineage Graph
+To view table descriptions, schemas, tests, and interactive lineages in your browser:
+
+```bash
+# Generate the documentation manifest
+uv run dbt docs generate --profiles-dir .
+
+# Start the interactive documentation server (opens local web interface)
+uv run dbt docs serve --profiles-dir .
+```
+
 ---
 
 ## Roadmap
@@ -411,22 +464,24 @@ The `infrastructure/databricks/` module treats Databricks Secret Scopes as Infra
 Bronze is the **immutable raw history** of all events. Deduplication happens in the Silver layer via Spark `MERGE` (Delta Lake UPSERT), which is the standard Medallion Architecture pattern used at companies like Uber, Airbnb, and Gojek.
 
 ### Phase 6: Dual-Paradigm dbt Strategy & Lessons Learned
-Dalam Fase 6, kita membuktikan portabilitas **satu dbt codebase** yang dapat dijalankan secara bersamaan di **Google BigQuery** dan **Snowflake** dengan membaca GCS Silver Delta Lake. Beberapa arsitektur penting yang wajib diingat:
+In Phase 6, we successfully proved the portability of **a single dbt codebase** running simultaneously on both **Google BigQuery** and **Snowflake** while querying the exact same Delta Lake tables stored on GCS. Key architectural strategies and lessons learned include:
 
-1. **Paradigm Mismatch pada External Table:**
-   * **BigQuery:** Secara native memahami format Delta Lake (`source_format = "DELTA_LAKE"`). BigQuery langsung mengekspos semua kolom secara flat sebagai kolom tabel biasa (`order_id`, `customer_id`, dll).
-   * **Snowflake:** Walaupun menggunakan `TABLE_FORMAT = DELTA`, Snowflake memetakan baris data Parquet ke dalam kolom tunggal bertipe `VARIANT` bernama `VALUE`.
-   * **Solusi Kita:** Kita membuat macro kustom `{{ col('field_name', 'data_type') }}` yang mendeteksi target secara dinamis:
-     * Jika BigQuery: `cast(field_name as data_type)`
-     * Jika Snowflake: `cast(value:field_name as data_type)`
-     Dengan macro ini, staging models kita tetap bersih dan 100% portable tanpa duplikasi file SQL!
+1. **External Table Paradigm Mismatch:**
+   * **BigQuery:** Natively integrates with Delta Lake (`source_format = "DELTA_LAKE"`), dynamically exposing all transaction fields as flat, first-class columns (`order_id`, `customer_id`, etc.) without manual schema definition.
+   * **Snowflake:** Despite utilizing the `TABLE_FORMAT = DELTA` option to read transaction logs, Snowflake exposes Parquet rows inside a single `VARIANT` column named `VALUE`.
+   * **Our Solution:** We created a custom `{{ col('field_name', 'data_type') }}` macro that dynamically detects the active target warehouse:
+     * For BigQuery: `cast(field_name as data_type)`
+     * For Snowflake: `cast(value:field_name as data_type)`
+     This custom abstraction keeps our staging models completely DRY, clean, and 100% portable without any SQL duplication!
 
 2. **Reserved Keywords & Case-Sensitivity (Snowflake):**
-   * Kata kunci `ORDER` sangat dilarang digunakan langsung di SQL query Snowflake. Karena itu, nama tabel harus di-double quote dan diubah menjadi uppercase: `LAKEHOUSE_RAW.SILVER."ORDER"`.
-   * Di `sources.yml`, kita mengonfigurasi `quoting: { identifier: true }` untuk tabel `ORDER` agar dbt selalu mengirimkan query yang ter-escape secara konsisten.
+   * The word `ORDER` is a highly reserved keyword in SQL. Snowflake throws syntax compilation errors on unquoted references to `order`. Thus, the external table must be explicitly capitalized and double-quoted: `LAKEHOUSE_RAW.SILVER."ORDER"`.
+   * In `sources.yml`, we configured `quoting: { identifier: true }` specifically for the `ORDER` table to ensure dbt automatically generates correctly escaped queries.
 
-3. **Aturan Delta Lake External Table di Snowflake:**
-   * Snowflake membatasi beberapa opsi saat membuat external table bertipe Delta:
-     * **`AUTO_REFRESH = false`** wajib digunakan karena auto-refresh tidak didukung untuk Delta format.
-     * **`REFRESH_ON_CREATE = false`** wajib diset, karena Snowflake akan membaca perubahan secara query-time langsung dari transaction log Delta (`_delta_log/`).
-     * Redundansi parameter `INTEGRATION` pada statement `CREATE TABLE` dibuang karena tabel otomatis mewarisi opsi `STORAGE_INTEGRATION` dari **Stage**-nya (`GCS_SILVER_STAGE`).
+3. **Snowflake Delta Lake External Table Properties:**
+   * Registering external tables with the `DELTA` table format in Snowflake requires strict property combinations:
+     * **`AUTO_REFRESH = false`** is mandatory because Delta Lake external tables do not support automated cloud messaging refresh patterns.
+     * **`REFRESH_ON_CREATE = false`** is required, instructing Snowflake to query transaction logs (`_delta_log/`) dynamically during query-time.
+     * The `INTEGRATION` property is redundant at the table creation level and was omitted since the external table automatically inherits the `STORAGE_INTEGRATION` from the parent stage (`GCS_SILVER_STAGE`).
+
+---

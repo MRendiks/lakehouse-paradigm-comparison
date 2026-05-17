@@ -134,16 +134,16 @@ Tabel siap konsumsi oleh BI / analyst:
 - [x] `models/marts/dim_customers.sql` — dimensi customer dengan lifecycle value
 - [x] `models/marts/fct_orders.sql` — fact table satu baris per transaksi dengan delivery time metric
 
-### 6.5 — Data Quality (dbt Tests) 🔲
-- [ ] Buat `schema.yml` per layer dengan tests:
+### 6.5 — Data Quality (dbt Tests) ✅
+- [x] Buat `schema.yml` per layer dengan tests:
   - `not_null` pada semua primary key
   - `unique` pada semua primary key
   - `relationships` antar staging models (FK integrity)
   - `accepted_values` untuk kolom status (order_status, payment_type)
-- [ ] Jalankan `dbt test --target bigquery` dan `dbt test --target snowflake`.
-- [ ] Dokumentasikan model dengan `description:` di setiap `schema.yml`.
+- [x] Jalankan `dbt test --target bigquery` dan `dbt test --target snowflake`.
+- [x] Dokumentasikan model dengan `description:` di setiap `schema.yml`.
 
-### 6.6 — Run di Dua Platform 🔲
+### 6.6 — Run di Dua Platform ✅
 ```bash
 # BigQuery: hasilkan tabel di dataset ecommerce_gold
 dbt run --target bigquery
