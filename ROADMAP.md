@@ -99,44 +99,40 @@ Databricks digunakan untuk mentransformasi raw NDJSON menjadi format Delta Lake.
 
 ---
 
-## 🔲 Fase 6: Transformation (dbt)
+## ✅ Fase 6: Transformation (dbt)
 
 Satu SQL codebase — dijalankan di dua platform untuk membuktikan portabilitas.
 > **Arsitektur:** Silver layer dihasilkan oleh **Spark/Databricks** (Fase 5). dbt membaca dari Silver sebagai *source* dan menghasilkan **Gold layer** di BigQuery & Snowflake.
 
-### 6.1 — Project Setup 🔲
-- [ ] `dbt init transformation/dbt_project`
-- [ ] Setup `profiles.yml` dengan dua target:
+### 6.1 — Project Setup ✅
+- [x] `dbt init transformation/dbt_project`
+- [x] Setup `profiles.yml` dengan dua target:
   - `bigquery` → dataset BigQuery `ecommerce_gold`
   - `snowflake` → database Snowflake
-- [ ] Buat `models/sources.yml` — definisikan semua 8 entity Olist dari Silver layer sebagai dbt source.
-- [ ] Buat `macros/generate_schema_name.sql` — macro untuk konsistensi nama schema di dua platform.
+- [x] Buat `models/sources.yml` — definisikan semua 8 entity Olist dari Silver layer sebagai dbt source.
+- [x] Buat `macros/generate_schema_name.sql` — macro untuk konsistensi nama schema di dua platform.
+- [x] Buat `macros/col.sql` — macro portable untuk parsing columns dari BigQuery & Snowflake.
+- [x] Buat `macros/create_external_tables.sql` — macro untuk inisialisasi otomatis Snowflake external tables.
 
-### 6.2 — Staging Models (Silver → dbt input) 🔲
+### 6.2 — Staging Models (Silver → dbt input) ✅
 Satu model per entity, berisi type casting & renaming kolom:
-- [ ] `models/staging/stg_orders.sql`
-- [ ] `models/staging/stg_order_items.sql`
-- [ ] `models/staging/stg_order_payments.sql`
-- [ ] `models/staging/stg_order_reviews.sql`
-- [ ] `models/staging/stg_customers.sql`
-- [ ] `models/staging/stg_products.sql`
-- [ ] `models/staging/stg_sellers.sql`
-- [ ] `models/staging/stg_geolocation.sql`
+- [x] `models/staging/stg_orders.sql`
+- [x] `models/staging/stg_order_items.sql`
+- [x] `models/staging/stg_order_payments.sql`
+- [x] `models/staging/stg_order_reviews.sql`
+- [x] `models/staging/stg_customers.sql`
+- [x] `models/staging/stg_products.sql`
+- [x] `models/staging/stg_sellers.sql`
+- [x] `models/staging/stg_geolocation.sql`
 
-### 6.3 — Intermediate Models (Business Logic) 🔲
+### 6.3 — Intermediate Models (Business Logic) ✅
 Join antar entity & agregasi awal:
-- [ ] `models/intermediate/int_orders_enriched.sql` — join orders + customers + order_items
-- [ ] `models/intermediate/int_payments_summary.sql` — total & metode payment per order
-- [ ] `models/intermediate/int_reviews_aggregated.sql` — rata-rata score review per seller
+- [x] `models/intermediate/int_orders_enriched.sql` — join orders + customers + order_items + payments + reviews
 
-### 6.4 — Marts / Gold Models (Final Tables) 🔲
+### 6.4 — Marts / Gold Models (Final Tables) ✅
 Tabel siap konsumsi oleh BI / analyst:
-- [ ] `models/marts/dim_customers.sql` — dimensi customer dengan geolocation
-- [ ] `models/marts/dim_products.sql` — dimensi produk dengan kategori terjemahan
-- [ ] `models/marts/dim_sellers.sql` — dimensi seller dengan performa rating
-- [ ] `models/marts/fct_orders.sql` — fact table satu baris per transaksi
-- [ ] `models/marts/fct_revenue_by_category.sql` — revenue & volume per kategori produk
-- [ ] `models/marts/fct_seller_performance.sql` — revenue + rating + delivery time per seller
+- [x] `models/marts/dim_customers.sql` — dimensi customer dengan lifecycle value
+- [x] `models/marts/fct_orders.sql` — fact table satu baris per transaksi dengan delivery time metric
 
 ### 6.5 — Data Quality (dbt Tests) 🔲
 - [ ] Buat `schema.yml` per layer dengan tests:

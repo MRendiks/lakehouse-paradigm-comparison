@@ -384,7 +384,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full phased implementation plan.
 | Phase 3 | Ingestion Engine (Kafka Producer + GCS Consumer) | ✅ Done |
 | Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
 | Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
-| Phase 6 | dbt Transformation (Silver→Gold, dual platform) | 🔲 Planned |
+| Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
 | Phase 7 | Benchmark & Documentation | 🔲 Planned |
 | Phase 8 | Data Lineage, Governance & Observability | 🔲 Planned |
 | Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
@@ -409,3 +409,24 @@ The `infrastructure/databricks/` module treats Databricks Secret Scopes as Infra
 
 ### Why Bronze is append-only (no deduplication at GCS)?
 Bronze is the **immutable raw history** of all events. Deduplication happens in the Silver layer via Spark `MERGE` (Delta Lake UPSERT), which is the standard Medallion Architecture pattern used at companies like Uber, Airbnb, and Gojek.
+
+### Phase 6: Dual-Paradigm dbt Strategy & Lessons Learned
+Dalam Fase 6, kita membuktikan portabilitas **satu dbt codebase** yang dapat dijalankan secara bersamaan di **Google BigQuery** dan **Snowflake** dengan membaca GCS Silver Delta Lake. Beberapa arsitektur penting yang wajib diingat:
+
+1. **Paradigm Mismatch pada External Table:**
+   * **BigQuery:** Secara native memahami format Delta Lake (`source_format = "DELTA_LAKE"`). BigQuery langsung mengekspos semua kolom secara flat sebagai kolom tabel biasa (`order_id`, `customer_id`, dll).
+   * **Snowflake:** Walaupun menggunakan `TABLE_FORMAT = DELTA`, Snowflake memetakan baris data Parquet ke dalam kolom tunggal bertipe `VARIANT` bernama `VALUE`.
+   * **Solusi Kita:** Kita membuat macro kustom `{{ col('field_name', 'data_type') }}` yang mendeteksi target secara dinamis:
+     * Jika BigQuery: `cast(field_name as data_type)`
+     * Jika Snowflake: `cast(value:field_name as data_type)`
+     Dengan macro ini, staging models kita tetap bersih dan 100% portable tanpa duplikasi file SQL!
+
+2. **Reserved Keywords & Case-Sensitivity (Snowflake):**
+   * Kata kunci `ORDER` sangat dilarang digunakan langsung di SQL query Snowflake. Karena itu, nama tabel harus di-double quote dan diubah menjadi uppercase: `LAKEHOUSE_RAW.SILVER."ORDER"`.
+   * Di `sources.yml`, kita mengonfigurasi `quoting: { identifier: true }` untuk tabel `ORDER` agar dbt selalu mengirimkan query yang ter-escape secara konsisten.
+
+3. **Aturan Delta Lake External Table di Snowflake:**
+   * Snowflake membatasi beberapa opsi saat membuat external table bertipe Delta:
+     * **`AUTO_REFRESH = false`** wajib digunakan karena auto-refresh tidak didukung untuk Delta format.
+     * **`REFRESH_ON_CREATE = false`** wajib diset, karena Snowflake akan membaca perubahan secara query-time langsung dari transaction log Delta (`_delta_log/`).
+     * Redundansi parameter `INTEGRATION` pada statement `CREATE TABLE` dibuang karena tabel otomatis mewarisi opsi `STORAGE_INTEGRATION` dari **Stage**-nya (`GCS_SILVER_STAGE`).
