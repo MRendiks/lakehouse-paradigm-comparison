@@ -27,7 +27,7 @@ class CsvReader:
             print(row_num, row)
     """
 
-    def __init__(self, csv_path: Path, encoding: str = "utf-8") -> None:
+    def __init__(self, csv_path: Path, encoding: str = "utf-8-sig") -> None:
         self._path = Path(csv_path)
         self._encoding = encoding
 

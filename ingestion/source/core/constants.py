@@ -19,6 +19,7 @@ class OlistTopic(str, Enum):
     REVIEWS = "ecommerce.olist.reviews.v1"
     CUSTOMERS = "ecommerce.olist.customers.v1"
     PRODUCTS = "ecommerce.olist.products.v1"
+    PRODUCT_CATEGORIES = "ecommerce.olist.product-categories.v1"
     SELLERS = "ecommerce.olist.sellers.v1"
     GEOLOCATION = "ecommerce.olist.geolocation.v1"
     DLQ = "ecommerce.dlq.v1"

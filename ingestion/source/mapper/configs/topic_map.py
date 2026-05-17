@@ -54,7 +54,7 @@ DATASET_TOPIC_MAP: dict[str, dict] = {
         "entity_type": "geolocation",
     },
     "product_category_name_translation.csv": {
-        "topic": OlistTopic.PRODUCTS,
+        "topic": OlistTopic.PRODUCT_CATEGORIES,
         "entity_type": "product_category",
     },
 }
