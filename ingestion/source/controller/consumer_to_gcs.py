@@ -126,7 +126,7 @@ def stream(
 @app.command(name="stream-all")
 def stream_all(
     bucket: str = typer.Option(
-        ...,
+        None,
         "--bucket",
         "-b",
         help="GCS bucket name for bronze layer (without gs:// prefix)",
@@ -139,7 +139,7 @@ def stream_all(
         envvar="APP_ENV",
     ),
     batch_size: int = typer.Option(
-        500,
+        1000,
         "--batch-size",
         help="Number of messages per GCS file (applies to all topics).",
     ),

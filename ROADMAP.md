@@ -50,14 +50,14 @@ Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 - [x] Test end-to-end: Pastikan semua **8 topic** terlihat di **Kafka-UI** (`localhost:8080`) dengan pesan terkirim.
 - [x] Verifikasi DLQ (`ecommerce.dlq.v1`) menerima message ketika produce gagal.
 
-### 3.3 — Kafka Consumer → GCS (Bronze) 🔲
-- [ ] Buat `source/services/kafka_consumer.py` — subscribe per topic (bukan satu consumer untuk semua).
-- [ ] Buat `source/services/gcs_uploader.py` — upload file JSON ke GCS bucket `bronze`.
-  - Gunakan `google-cloud-storage` library.
+### 3.3 — Kafka Consumer → GCS (Bronze) ✅
+- [x] Buat `source/services/kafka_consumer_svc.py` — subscribe per topic (bukan satu consumer untuk semua).
+- [x] Buat `source/controller/consumer_to_gcs.py` — orchestrator & CLI command.
+  - Gunakan `google-cloud-storage` library (via `StorageService`).
   - Gunakan ADC (lokal) atau `GCP_SERVICE_ACCOUNT_JSON` dari Infisical (Docker/prod).
   - Struktur path: `bronze/{entity_type}/year={}/month={}/day={}/batch_{}.json` (partisi Hive-style).
-- [ ] Implementasi logika batching: kumpulkan N pesan → jadikan 1 file `.json` → upload ke `bronze/`.
-- [ ] Test end-to-end: Pastikan file JSON muncul di GCS bucket `bronze` dengan struktur path yang benar.
+- [x] Implementasi logika batching: kumpulkan N pesan (atau tunggu max N detik) → jadikan 1 file `.json` → upload ke `bronze/`.
+- [x] Test end-to-end: Pastikan file JSON muncul di GCS bucket `bronze` dengan struktur path yang benar.
 
 ---
 
