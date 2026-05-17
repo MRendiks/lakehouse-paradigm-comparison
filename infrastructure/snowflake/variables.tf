@@ -31,6 +31,11 @@ variable "gcs_bronze_bucket" {
   type        = string
 }
 
+variable "gcs_silver_bucket" {
+  description = "GCS Silver bucket name (without gs:// prefix)"
+  type        = string
+}
+
 # ── Snowflake Warehouse ───────────────────────────────────────────────────────
 variable "warehouse_size" {
   description = "Snowflake Virtual Warehouse size"
