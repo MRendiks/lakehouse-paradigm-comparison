@@ -1,0 +1,12 @@
+# Template untuk terraform.tfvars — AMAN di-commit ke Git.
+# Salin file ini menjadi terraform.tfvars lalu isi nilainya.
+
+databricks_host  = "https://<your-workspace>.cloud.databricks.com"
+databricks_token = "<YOUR_DATABRICKS_PAT>"
+
+# Path absolut ke file JSON Service Account GCP untuk Databricks
+gcp_sa_key_path = "/absolute/path/to/your/gcp-sa-key.json"
+
+gcp_project_id    = "<YOUR_GCP_PROJECT_ID>"
+gcs_bronze_bucket = "<YOUR_BRONZE_BUCKET_NAME>"
+gcs_silver_bucket = "<YOUR_SILVER_BUCKET_NAME>"
