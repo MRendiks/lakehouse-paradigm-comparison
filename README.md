@@ -362,8 +362,8 @@ Each Kafka topic maps to one isolated consumer pod in Kubernetes. This provides:
 - **Granular scaling** — high-volume topics (orders) can scale independently
 
 ### Why batch-size + time-window flush?
-Pure count-based batching leaves data stranded in memory during low-traffic periods. The dual-trigger strategy (`--batch-size` OR 5-second timeout) ensures:
-- **Near-real-time latency** (max 5 seconds end-to-end)
+Pure count-based batching leaves data stranded in memory during low-traffic periods. The dual-trigger strategy (`--batch-size` OR 30-second timeout) ensures:
+- **Near-real-time latency** (max 30 seconds end-to-end)
 - **No small-file problem** (files are always ≥ 1 record, optimally ~1000)
 
 ### Why Terraform for Databricks secrets?
