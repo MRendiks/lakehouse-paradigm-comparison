@@ -1,9 +1,41 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# dbt profiles.yml
+# Lokasi default: ~/.dbt/profiles.yml
+# Untuk local dev, bisa juga ditaruh di direktori project ini dan jalankan:
+#   dbt run --profiles-dir .
+#
+# ⚠️  FILE INI TIDAK BOLEH DI-COMMIT KE GIT (sudah ada di .gitignore)
+# Salin dari profiles.yml.example lalu isi nilainya.
+# ──────────────────────────────────────────────────────────────────────────────
+
 lakehouse_profile:
-  target: dev
+  target: bigquery  # default target (bisa dioverride: dbt run --target snowflake)
   outputs:
-    dev:
+
+    # ── BigQuery Target ────────────────────────────────────────────────────────
+    # Membaca dari dataset Silver GCS (via BigQuery External Table atau BigLake)
+    # Menulis Gold layer ke dataset ecommerce_gold
+    bigquery:
       type: bigquery
-      method: oauth
-      project: my-gcp-project
-      dataset: ecommerce_silver
+      method: oauth                          # gunakan gcloud ADC (Application Default Credentials)
+      project: project-aaa919f1-4345-401b-860
+      dataset: ecommerce_gold               # Gold layer output dataset
+      location: asia-southeast2
       threads: 4
+      timeout_seconds: 300
+      priority: interactive
+
+    # ── Snowflake Target ───────────────────────────────────────────────────────
+    # Membaca dari schema SILVER di Snowflake (via External Stage)
+    # Menulis Gold layer ke schema GOLD
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"       # format: orgname-accountname
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: LAKEHOUSE_RAW
+      warehouse: LAKEHOUSE_WH
+      schema: GOLD                                         # Gold layer output schema
+      threads: 4
+      client_session_keep_alive: false

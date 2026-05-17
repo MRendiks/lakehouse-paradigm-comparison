@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: olist_silver
+    description: "Silver layer containing cleaned and deduplicated Olist datasets"
+    database: "{{ 'project-aaa919f1-4345-401b-860' if target.type == 'bigquery' else 'LAKEHOUSE_RAW' }}"
+    schema: "{{ 'ecommerce_silver' if target.type == 'bigquery' else 'SILVER' }}"
+    tables:
+      - name: ORDER
+        quoting:
+          identifier: true
+        description: "Orders placed by customers"
+      - name: order_item
+        description: "Items included in each order"
+      - name: payment
+        description: "Payments made for orders"
+      - name: review
+        description: "Customer reviews for orders"
+      - name: customer
+        description: "Customer registration details"
+      - name: product
+        description: "Products catalog details"
+      - name: product_category
+        description: "Product category name translation map"
+      - name: seller
+        description: "Seller details"
+      - name: geolocation
+        description: "Zip code latitude and longitude details"

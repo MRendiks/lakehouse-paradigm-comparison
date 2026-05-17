@@ -1,0 +1,11 @@
+[project]
+name = "dbt-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "dbt-bigquery>=1.11.1",
+    "dbt-core>=1.11.10",
+    "dbt-snowflake>=1.11.5",
+]

@@ -1,0 +1,25 @@
+lakehouse_profile:
+  target: bigquery
+  outputs:
+
+    bigquery:
+      type: bigquery
+      method: oauth
+      project: <YOUR_GCP_PROJECT_ID>
+      dataset: ecommerce_gold
+      location: asia-southeast2
+      threads: 4
+      timeout_seconds: 300
+      priority: interactive
+
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"   # format: orgname-accountname
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: LAKEHOUSE_RAW
+      warehouse: LAKEHOUSE_WH
+      schema: GOLD
+      threads: 4
+      client_session_keep_alive: false
