@@ -138,35 +138,35 @@ To consume data from Kafka and upload it to the GCS Bronze layer, run the consum
 
 You can use the `stream-all` command for local development to stream all topics concurrently:
 ```bash
-uv run ingestion-run consumer-to-gcs stream-all --bucket <YOUR_GCS_BRONZE_BUCKET> --env dev
+uv run ingestion-run consumer-to-gcs stream-all --env dev
 ```
 
 For production or targeted streaming, run the `stream` command per topic (useful for isolated Kubernetes Pods):
 ```bash
 # Orders
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.orders.v1 --entity order --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.orders.v1 --entity order --group-id gcs-bronze-order-dev-v0.0.1 --batch-size 1000
 
 # Order Items
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.order-items.v1 --entity order_item --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.order-items.v1 --entity order_item --group-id gcs-bronze-order-item-dev-v0.0.1 --batch-size 1000
 
 # Payments
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.payments.v1 --entity payment --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.payments.v1 --entity payment --group-id gcs-bronze-payment-dev-v0.0.1 --batch-size 1000
 
 # Reviews
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.reviews.v1 --entity review --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.reviews.v1 --entity review --group-id gcs-bronze-review-dev-v0.0.1 --batch-size 1000
 
 # Customers
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.customers.v1 --entity customer --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.customers.v1 --entity customer --group-id gcs-bronze-customer-dev-v0.0.1 --batch-size 1000
 
 # Products
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.products.v1 --entity product --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.products.v1 --entity product --group-id gcs-bronze-product-dev-v0.0.1 --batch-size 1000
 
 # Product Categories Translation
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.product-categories.v1 --entity product_category --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.product-categories.v1 --entity product_category --group-id gcs-bronze-product-category-dev-v0.0.1 --batch-size 1000
 
 # Sellers
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.sellers.v1 --entity seller --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.sellers.v1 --entity seller --group-id gcs-bronze-seller-dev-v0.0.1 --batch-size 1000
 
 # Geolocation
-uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.geolocation.v1 --entity geolocation --bucket <YOUR_GCS_BRONZE_BUCKET>
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.geolocation.v1 --entity geolocation --group-id gcs-bronze-geolocation-dev-v0.0.1 --batch-size 1000
 ```

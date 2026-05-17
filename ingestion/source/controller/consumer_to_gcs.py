@@ -32,7 +32,7 @@ def stream(
         help="Entity type name for GCS path partitioning, e.g. 'order'",
     ),
     bucket: str = typer.Option(
-        ...,
+        None,
         "--bucket",
         "-b",
         help="GCS bucket name for bronze layer (without gs:// prefix)",
@@ -100,6 +100,11 @@ def stream(
         logger.error("GCP_PROJECT_ID is not set.")
         raise typer.Exit(code=1)
 
+    bucket_name = bucket or settings.GCS_BRONZE_BUCKET
+    if not bucket_name:
+        logger.error("GCS_BRONZE_BUCKET is not set. Provide via --bucket or .env")
+        raise typer.Exit(code=1)
+
     storage = GCSStorageService(
         project_id=settings.GCP_PROJECT_ID,
         credentials_json=settings.GCP_SERVICE_ACCOUNT_JSON or None,
@@ -110,7 +115,7 @@ def stream(
         topic=topic,
         entity_type=entity,
         storage=storage,
-        gcs_bucket=bucket,
+        gcs_bucket=bucket_name,
         batch_size=batch_size,
         consumer_group_id=group_id,
     )
@@ -180,6 +185,11 @@ def stream_all(
         logger.error("GCP_PROJECT_ID is not set.")
         raise typer.Exit(code=1)
 
+    bucket_name = bucket or settings.GCS_BRONZE_BUCKET
+    if not bucket_name:
+        logger.error("GCS_BRONZE_BUCKET is not set. Provide via --bucket or .env")
+        raise typer.Exit(code=1)
+
     # Deduplicate by topic — multiple CSV files may share the same entity/topic
     seen_topics: set[str] = set()
     consumers: list[KafkaToGcsConsumerService] = []
@@ -200,7 +210,7 @@ def stream_all(
             topic=topic_value,
             entity_type=config["entity_type"],
             storage=storage,
-            gcs_bucket=bucket,
+            gcs_bucket=bucket_name,
             batch_size=batch_size,
         )
         consumers.append(svc)
@@ -216,7 +226,9 @@ def stream_all(
         )
         threads.append(t)
         t.start()
-        logger.info(f"  ↳ Thread started | entity={svc._entity_type} | topic={svc._topic}")
+        logger.info(
+            f"  ↳ Thread started | entity={svc._entity_type} | topic={svc._topic}"
+        )
 
     logger.info("All consumer threads running. Press Ctrl+C to stop.")
 
@@ -225,7 +237,9 @@ def stream_all(
         for t in threads:
             t.join()
     except KeyboardInterrupt:
-        logger.info("Shutdown signal received — waiting for threads to flush and close...")
+        logger.info(
+            "Shutdown signal received — waiting for threads to flush and close..."
+        )
         # Each thread's run() handles its own graceful shutdown on KeyboardInterrupt
 
 

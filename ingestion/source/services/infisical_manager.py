@@ -78,6 +78,11 @@ class InfisicalManager:
                 environment_slug=environment_slug,
                 default="",
             )
+            settings_obj.GCS_BRONZE_BUCKET = self._get_secret_value(
+                secret_name="GCS_BRONZE_BUCKET",
+                environment_slug=environment_slug,
+                default="",
+            )
 
             logger.info("Successfully updated app settings from Infisical.")
         except Exception as e:

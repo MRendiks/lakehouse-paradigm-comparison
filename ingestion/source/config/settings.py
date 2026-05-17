@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = ""
     GCP_PROJECT_ID: str = ""
     GCP_SERVICE_ACCOUNT_JSON: str = ""
+    GCS_BRONZE_BUCKET: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

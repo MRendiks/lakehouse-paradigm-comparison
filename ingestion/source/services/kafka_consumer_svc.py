@@ -56,6 +56,7 @@ class KafkaToGcsConsumerService:
         gcs_bucket: str,
         batch_size: int = 500,
         poll_timeout: float = 1.0,
+        max_wait_time: float = 30.0,
         consumer_group_id: Optional[str] = None,
     ) -> None:
         from confluent_kafka import Consumer
@@ -66,6 +67,7 @@ class KafkaToGcsConsumerService:
         self._gcs_bucket = gcs_bucket
         self._batch_size = batch_size
         self._poll_timeout = poll_timeout
+        self._max_wait_time = max_wait_time
         self._group_id = consumer_group_id or f"gcs-bronze-{entity_type}"
 
         self._consumer = Consumer(
@@ -83,7 +85,8 @@ class KafkaToGcsConsumerService:
 
         logger.info(
             f"KafkaToGcsConsumerService initialized | topic={topic} | "
-            f"entity={entity_type} | batch_size={batch_size} | group={self._group_id}"
+            f"entity={entity_type} | batch_size={batch_size} | "
+            f"max_wait={max_wait_time}s | group={self._group_id}"
         )
 
     def run(self) -> None:
@@ -91,32 +94,44 @@ class KafkaToGcsConsumerService:
         Start the consume loop. Blocking — runs until KeyboardInterrupt or SIGTERM.
 
         Flow per iteration:
-            poll(timeout) → accumulate into buffer →
-            if buffer >= batch_size: flush_to_gcs() → commit offsets → clear buffer
+            poll(timeout) → accumulate into buffer
+            if buffer >= batch_size OR time elapsed >= max_wait_time:
+                flush_to_gcs() → commit offsets → clear buffer
         """
+        import time
+
         buffer: list[dict] = []
-        logger.info(f"Starting consumer loop | topic={self._topic}")
+        last_flush_time = time.time()
+        logger.info(
+            f"Starting consumer loop | topic={self._topic} | "
+            f"max_batch={self._batch_size} | max_wait={self._max_wait_time}s"
+        )
 
         try:
             while True:
                 msg = self._consumer.poll(timeout=self._poll_timeout)
 
-                if msg is None:
-                    # No new messages within poll_timeout — safe to continue
-                    continue
+                if msg is not None:
+                    if msg.error():
+                        self._handle_kafka_error(msg.error())
+                    else:
+                        parsed = self._parse_message(msg)
+                        if parsed is not None:
+                            buffer.append(parsed)
 
-                if msg.error():
-                    self._handle_kafka_error(msg.error())
-                    continue
+                # Check if we should flush
+                size_reached = len(buffer) >= self._batch_size
+                time_reached = (
+                    time.time() - last_flush_time >= self._max_wait_time
+                ) and len(buffer) > 0
 
-                parsed = self._parse_message(msg)
-                if parsed is not None:
-                    buffer.append(parsed)
-
-                if len(buffer) >= self._batch_size:
+                if size_reached or time_reached:
+                    reason = "size" if size_reached else "timeout"
+                    logger.debug(f"Flushing batch ({reason}) | records={len(buffer)}")
                     self._flush_batch(buffer)
                     self._consumer.commit(asynchronous=False)
                     buffer.clear()
+                    last_flush_time = time.time()
 
         except KeyboardInterrupt:
             logger.info("Shutdown signal received.")
@@ -163,7 +178,9 @@ class KafkaToGcsConsumerService:
 
         # NDJSON (Newline-Delimited JSON): one record per line.
         # More memory-efficient for BigQuery External Table ingestion vs. JSON array.
-        ndjson_bytes = "\n".join(json.dumps(row, default=str) for row in buffer).encode("utf-8")
+        ndjson_bytes = "\n".join(json.dumps(row, default=str) for row in buffer).encode(
+            "utf-8"
+        )
 
         try:
             uri = self._storage.upload_bytes(
