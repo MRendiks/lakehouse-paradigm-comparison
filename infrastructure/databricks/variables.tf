@@ -28,3 +28,8 @@ variable "gcs_silver_bucket" {
   description = "GCS Silver bucket name (without gs:// prefix)"
   type        = string
 }
+
+variable "gcs_gold_bucket" {
+  description = "GCS Gold bucket name (without gs:// prefix)"
+  type        = string
+}
