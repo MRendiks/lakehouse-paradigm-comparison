@@ -95,9 +95,17 @@ lakehouse-paradigm-comparison/
 │   │   ├── outputs.tf
 │   │   ├── terraform.tfvars        # ⚠️ Not committed to Git
 │   │   └── terraform.tfvars.example
-│   └── databricks/                 # Terraform: Databricks Secret Scope
-│       ├── providers.tf
-│       ├── secrets.tf              # Secret Scope + GCP SA key injection
+│   ├── databricks/                 # Terraform: Databricks Secret Scope
+│   │   ├── providers.tf
+│   │   ├── secrets.tf              # Secret Scope + GCP SA key injection
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars        # ⚠️ Not committed to Git
+│   │   └── terraform.tfvars.example
+│   └── snowflake/                  # Terraform: Snowflake DB + Stage + GCS Handshake
+│       ├── providers.tf            # Snowflake + Google dual provider
+│       ├── database.tf             # Database LAKEHOUSE_RAW + Schemas + Warehouse
+│       ├── storage.tf              # Storage Integration + Auto GCP IAM + Stage
 │       ├── variables.tf
 │       ├── outputs.tf
 │       ├── terraform.tfvars        # ⚠️ Not committed to Git
@@ -196,7 +204,37 @@ terraform apply
 
 This creates a `gcp_secrets` Secret Scope in your Databricks Workspace and injects the GCP Service Account key — no manual copy-paste required.
 
-### 5. Setup Local Kafka (Docker)
+### 5. Provision Snowflake Infrastructure (Terraform)
+
+Get your Snowflake org and account name by running these queries in a Snowflake Worksheet:
+```sql
+SELECT CURRENT_ORGANIZATION_NAME();
+SELECT CURRENT_ACCOUNT_NAME();
+```
+
+Then:
+```bash
+cd infrastructure/snowflake
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars: set snowflake credentials and GCP project/bucket
+
+terraform init
+terraform apply
+```
+
+This provisions in a **single `terraform apply`**:
+- Snowflake Database `LAKEHOUSE_RAW` + Schemas (`BRONZE`, `SILVER`, `GOLD`)
+- Virtual Warehouse `LAKEHOUSE_WH` (X-SMALL, auto-suspend 60s)
+- Storage Integration `GCS_INT` linking GCS ↔ Snowflake
+- **GCP IAM binding is applied automatically** (no manual GCP Console step!)
+- External Stage `GCS_BRONZE_STAGE` ready to query
+
+Verify by running in Snowflake Worksheet:
+```sql
+LIST @LAKEHOUSE_RAW.BRONZE.GCS_BRONZE_STAGE;
+```
+
+### 6. Setup Local Kafka (Docker)
 
 ```bash
 # From the project root
