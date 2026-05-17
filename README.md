@@ -18,6 +18,8 @@
   - [Setup Python Environment](#6-setup-python-environment)
   - [Run the Producer](#7-run-the-kafka-producer)
   - [Run the Consumer](#8-run-the-consumer-kafka--gcs-bronze)
+  - [Run DBT](#9-run-dbt)
+  - [Run the Performance Benchmark](#10-run-the-performance-benchmark)
 - [Kafka Topics](#kafka-topics)
 - [Roadmap](#roadmap)
 
@@ -441,6 +443,33 @@ uv run dbt docs generate --profiles-dir .
 uv run dbt docs serve --profiles-dir . --port 8085
 ```
 
+### 10. Run the Performance Benchmark
+
+To execute the automated dual-paradigm performance benchmark comparing Google BigQuery and Snowflake over 10 distinct analytical workloads:
+
+```bash
+# 1. Navigate to the dbt project directory
+cd transformation/dbt_project
+
+# 2. Execute the benchmarking script
+# This connects to both warehouses, executes 10 queries, and generates a dynamic markdown report
+uv run python benchmark.py
+```
+
+The script will measure **Cold Run Latency** (reading directly from cloud storage files) vs. **Warm Run Latency** (utilizing caching layers) for:
+1. `fct_orders` Full Scan
+2. Group By Aggregation (Customer LTV)
+3. Multi-Table Join Enrichment
+4. Window Function (Customer RFM Analysis)
+5. Complex Subquery Semi-Joins
+6. Rolling 30-Day Moving Average
+7. High-Cardinality String Parsing
+8. Complex Pivot Cross-Tabulation
+9. Star Schema Join Reconstruction
+10. Heavy Mathematical Percentiles & Median
+
+The detailed report will be compiled dynamically in [BENCHMARK_REPORT.md](./BENCHMARK_REPORT.md).
+
 ---
 
 ## Roadmap
@@ -455,7 +484,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full phased implementation plan.
 | Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
 | Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
 | Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
-| Phase 7 | Benchmark & Documentation | 🔲 Planned |
+| Phase 7 | Benchmark & Documentation | ✅ Done |
 | Phase 8 | Data Lineage, Governance & Observability | 🔲 Planned |
 | Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
 

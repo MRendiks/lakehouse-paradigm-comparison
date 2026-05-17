@@ -157,29 +157,35 @@ dbt test --target snowflake
 dbt docs generate
 dbt docs serve
 ```
-- [ ] Screenshot **lineage graph** dari `dbt docs serve` untuk README.
+- [x] Screenshot **lineage graph** dari `dbt docs serve` untuk README.
 
 ---
 
-## 🔲 Fase 7: Benchmark & Documentation
+## ✅ Fase 7: Benchmark & Documentation
 
 Ini adalah **inti komparasi** — output dari fase ini yang membuat project ini bernilai tinggi di portofolio.
 
-### 7.1 — Performance Benchmark 🔲
+### 7.1 — Performance Benchmark ✅
 Jalankan query yang **identik** di kedua platform, catat hasilnya:
 
-| Query | BigQuery | Snowflake |
-|---|---|---|
-| `fct_orders` full scan | ? detik / ? GB | ? detik / ? kredit |
-| `fct_revenue_by_category` (GROUP BY) | ? | ? |
-| `fct_seller_performance` (multi-join) | ? | ? |
-| Cold run vs warm run | ? | ? |
+| Query Scenario | BigQuery (Cold / Warm) | Snowflake (Cold / Warm) | Data Scanned / Compute Cost |
+|---|---|---|---|
+| `fct_orders` full scan | 0.512s / 0.295s | 0.556s / 0.278s | BQ: 10.00 MB / SF: X-Small Warehouse |
+| `group_by_aggregation` (LTV) | 0.317s / 0.240s | 0.322s / 0.286s | BQ: 10.00 MB / SF: X-Small Warehouse |
+| `multi_join_enrichment` (Staging joins) | 1.271s / 1.074s | 0.438s / 0.375s | BQ: 20.00 MB / SF: X-Small Warehouse |
+| `window_function_rfm` (Window RFM) | 0.331s / 0.282s | 0.336s / 0.313s | BQ: 10.00 MB / SF: X-Small Warehouse |
+| `subquery_semi_join` (Filter Subquery) | 1.385s / 0.976s | 0.393s / 0.341s | BQ: 40.00 MB / SF: X-Small Warehouse |
+| `rolling_30d_average` (Rolling Revenue) | 0.312s / 0.263s | 0.307s / 0.314s | BQ: 10.00 MB / SF: X-Small Warehouse |
+| `string_operations_parsing` (String Parsing) | 1.244s / 0.967s | 0.387s / 0.364s | BQ: 20.00 MB / SF: X-Small Warehouse |
+| `pivot_distribution` (Pivot States) | 1.303s / 0.866s | 0.369s / 0.384s | BQ: 40.00 MB / SF: X-Small Warehouse |
+| `star_schema_join` (Star Schema Join) | 1.389s / 1.336s | 0.410s / 0.392s | BQ: 50.00 MB / SF: X-Small Warehouse |
+| `percentile_analytics` (Percentile Median) | 0.452s / 0.434s | 0.303s / 0.314s | BQ: 20.00 MB / SF: X-Small Warehouse |
 
-### 7.2 — Cost Analysis 🔲
-- Estimasi biaya per 1 juta baris untuk masing-masing platform.
-- Catat perbedaan model pricing: **BigQuery** (per bytes scanned) vs **Snowflake** (per compute credits).
+### 7.2 — Cost Analysis ✅
+- [x] Estimasi biaya per 1 juta baris untuk masing-masing platform.
+- [x] Catat perbedaan model pricing: **BigQuery** (per bytes scanned) vs **Snowflake** (per compute credits).
 
-### 7.3 — Feature Comparison Table 🔲
+### 7.3 — Feature Comparison Table ✅
 Dokumentasikan perbedaan fitur native:
 
 | Feature | BigQuery | Snowflake |
@@ -193,13 +199,13 @@ Dokumentasikan perbedaan fitur native:
 | GCS Integration | ✅ Native | Via Storage Integration |
 | dbt Support | ✅ | ✅ |
 
-### 7.4 — README Final 🔲
-- [ ] Arsitektur diagram end-to-end (Mermaid) — Kafka → Bronze → Silver → Gold → BI.
-- [ ] Benchmark results table (dari 7.1 & 7.2).
-- [ ] Feature comparison table (dari 7.3).
-- [ ] Screenshot dbt lineage graph.
-- [ ] Keputusan desain: kapan pilih BigQuery vs Snowflake.
-- [ ] *Lessons learned* dari membangun dual-paradigm pipeline.
+### 7.4 — README Final ✅
+- [x] Arsitektur diagram end-to-end (Mermaid) — Kafka → Bronze → Silver → Gold → BI.
+- [x] Benchmark results table (dari 7.1 & 7.2).
+- [x] Feature comparison table (dari 7.3).
+- [x] Screenshot dbt lineage graph.
+- [x] Keputusan desain: kapan pilih BigQuery vs Snowflake.
+- [x] *Lessons learned* dari membangun dual-paradigm pipeline.
 
 ---
 
