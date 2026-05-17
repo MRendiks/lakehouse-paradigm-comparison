@@ -1,0 +1,39 @@
+entity: order
+version: "1.0.0"
+owner: data-engineering-team
+topic: ecommerce.olist.orders.v1
+fields:
+  - name: order_id
+    type: string
+    nullable: false
+    pii: false
+  - name: customer_id
+    type: string
+    nullable: false
+    pii: true
+    classification: confidential
+  - name: order_status
+    type: string
+    nullable: false
+    pii: false
+    accepted_values: [delivered, shipped, canceled, invoiced, processing]
+  - name: order_purchase_timestamp
+    type: timestamp
+    nullable: false
+    pii: false
+  - name: order_approved_at
+    type: timestamp
+    nullable: true
+    pii: false
+  - name: order_delivered_carrier_date
+    type: timestamp
+    nullable: true
+    pii: false
+  - name: order_delivered_customer_date
+    type: timestamp
+    nullable: true
+    pii: false
+  - name: order_estimated_delivery_date
+    type: timestamp
+    nullable: false
+    pii: false

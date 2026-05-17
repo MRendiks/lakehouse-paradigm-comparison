@@ -19,7 +19,7 @@ orders as (
 )
 
 select
-    c.customer_unique_id,
+    {{ mask_pii('c.customer_unique_id') }} as customer_unique_id,
     c.customer_city,
     c.customer_state,
     coalesce(o.total_orders, 0) as total_orders,

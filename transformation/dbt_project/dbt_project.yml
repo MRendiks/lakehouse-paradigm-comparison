@@ -16,6 +16,9 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+on-run-end:
+  - "{{ elementary.upload_run_results() }}"
+
 models:
   lakehouse_transformation:
     staging:
@@ -24,3 +27,5 @@ models:
       +materialized: ephemeral
     marts:
       +materialized: table
+  elementary:
+    +schema: elementary

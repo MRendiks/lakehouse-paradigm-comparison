@@ -3,28 +3,113 @@ version: 2
 models:
   - name: fct_orders
     description: "Gold layer fact table of transactions, enriched with payments, reviews, and delivery duration benchmarks."
+    config:
+      contract:
+        enforced: true
+      meta:
+        owner: "data-platform-team"
+        sla: "07:00 UTC"
+        refresh_frequency: "daily"
+        domain: "sales"
     columns:
       - name: order_id
+        data_type: string
         description: "Primary key of the order."
         tests:
           - unique
           - not_null
       - name: customer_id
+        data_type: string
         description: "Customer key for the transaction."
+        meta:
+          pii: true
+          classification: "confidential"
         tests:
           - not_null
+      - name: customer_unique_id
+        data_type: string
+        description: "Unique persistent identity of the customer."
+        meta:
+          pii: true
+          classification: "confidential"
+      - name: customer_city
+        data_type: string
+        description: "City name of the customer."
+      - name: customer_state
+        data_type: string
+        description: "State acronym of the customer."
+      - name: order_status
+        data_type: string
+        description: "Lifecycle state of the order."
+      - name: order_purchase_timestamp
+        data_type: timestamp
+        description: "Timestamp when the order was placed."
+      - name: order_approved_at
+        data_type: timestamp
+        description: "Timestamp when the payment was approved."
+      - name: order_delivered_carrier_date
+        data_type: timestamp
+        description: "Timestamp when the order was handed over to the carrier."
+      - name: order_delivered_customer_date
+        data_type: timestamp
+        description: "Timestamp when the customer received the order."
+      - name: order_estimated_delivery_date
+        data_type: timestamp
+        description: "Estimated timestamp for delivery promised to the customer."
+      - name: total_payment_sequences
+        data_type: integer
+        description: "Total count of payment sequences or split methods used."
       - name: total_payment_value
+        data_type: numeric
         description: "Aggregated sum of all payment methods for the order."
+      - name: max_payment_installments
+        data_type: integer
+        description: "Maximum split-payment installments chosen by the customer."
+      - name: avg_review_score
+        data_type: numeric
+        description: "Average customer satisfaction review score."
+      - name: total_reviews
+        data_type: integer
+        description: "Total count of reviews submitted for the order."
+      - name: delivery_time_days
+        data_type: integer
+        description: "Calculated actual transit duration in days."
+      - name: delta_delivery_vs_estimated_days
+        data_type: integer
+        description: "Calculated variance in days between actual and estimated delivery."
 
   - name: dim_customers
     description: "Gold layer customer dimension, providing lifecycle value metrics and geographic locations."
+    config:
+      contract:
+        enforced: true
+      meta:
+        owner: "marketing-analytics"
+        sla: "07:00 UTC"
+        refresh_frequency: "daily"
+        domain: "customers"
     columns:
       - name: customer_unique_id
+        data_type: string
         description: "Primary key. Unique, persistent identity of the customer."
+        meta:
+          pii: true
+          classification: "confidential"
         tests:
           - unique
           - not_null
+      - name: customer_city
+        data_type: string
+        description: "City name of the customer."
+      - name: customer_state
+        data_type: string
+        description: "State acronym of the customer."
       - name: total_orders
+        data_type: integer
         description: "Lifecycle purchase count for this customer."
       - name: total_lifetime_value
+        data_type: numeric
         description: "Total aggregated spend of the customer."
+      - name: avg_lifetime_review_score
+        data_type: numeric
+        description: "Average overall review score across lifetime orders."

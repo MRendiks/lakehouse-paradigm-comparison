@@ -4,8 +4,8 @@ with enriched_orders as (
 
 select
     order_id,
-    customer_id,
-    customer_unique_id,
+    {{ mask_pii('customer_id') }} as customer_id,
+    {{ mask_pii('customer_unique_id') }} as customer_unique_id,
     customer_city,
     customer_state,
     order_status,
