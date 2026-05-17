@@ -413,7 +413,24 @@ uv run dbt run --profiles-dir . --target snowflake
 uv run dbt test --profiles-dir . --target snowflake
 ```
 
-### 3. Generate Interactive Documentation & Lineage Graph
+### 3. Advanced: Snowflake Credential Automation
+#### Centralized Secrets Management via Infisical (Recommended for Enterprise)
+We have implemented a custom Python-SDK-based runner `run_dbt_infisical.py` in the dbt project folder. This runner automatically loads Universal Auth credentials from `ingestion/.env`, connects securely to your Infisical Cloud dev vault, fetches your Snowflake parameters, and triggers the dbt process in a fully isolated runtime context:
+
+```bash
+# From: transformation/dbt_project
+
+# Run dbt models securely via Infisical secrets
+uv run python run_dbt_infisical.py run --profiles-dir . --target snowflake
+
+# Run data quality tests securely via Infisical secrets
+uv run python run_dbt_infisical.py test --profiles-dir . --target snowflake
+
+# Run dbt-operation to register external tables
+uv run python run_dbt_infisical.py run-operation create_external_tables --profiles-dir . --target snowflake
+```
+
+### 4. Generate Interactive Documentation & Lineage Graph
 To view table descriptions, schemas, tests, and interactive lineages in your browser:
 
 ```bash
