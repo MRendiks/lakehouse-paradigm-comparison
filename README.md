@@ -312,7 +312,7 @@ uv run ingestion-run consumer-to-gcs stream \
   --batch-size 1000
 ```
 
-> **Consumer Design:** Uploads are triggered when **either** the batch reaches `--batch-size` records **or** 5 seconds have elapsed (time-window flush), ensuring near-real-time latency without small-file explosion.
+> **Consumer Design:** Uploads are triggered when **either** the batch reaches `--batch-size` records **or** 30 seconds have elapsed (time-window flush), ensuring near-real-time latency without small-file explosion.
 
 ---
 
