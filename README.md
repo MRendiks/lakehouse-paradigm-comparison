@@ -485,7 +485,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full phased implementation plan.
 | Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
 | Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
 | Phase 7 | Benchmark & Documentation | ✅ Done |
-| Phase 8 | Data Lineage, Governance & Observability | 🔲 Planned |
+| Phase 8 | Data Lineage, Governance & Observability | ✅ Done |
 | Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
 
 ---
@@ -531,3 +531,23 @@ In Phase 6, we successfully proved the portability of **a single dbt codebase** 
      * The `INTEGRATION` property is redundant at the table creation level and was omitted since the external table automatically inherits the `STORAGE_INTEGRATION` from the parent stage (`GCS_SILVER_STAGE`).
 
 ---
+
+### Phase 8: Data Lineage, Governance & Observability
+
+In Phase 8, we successfully implemented the three pillars of enterprise data operations: **Data Lineage**, **Data Governance**, and **Data Observability** across our dual-paradigm lakehouse.
+
+#### 1. End-to-End Data Lineage (OpenLineage + Marquez)
+To track data relationships and trace pipeline dependencies from source to analytics, we integrated **OpenLineage** (open metadata standard) and **Marquez** (metadata visualization UI):
+* **Databricks Spark Lineage:** Configured Spark listeners (`io.openlineage.spark.agent.OpenLineageSparkListener`) to automatically emit operational run events from PySpark jobs (`GCS Bronze` → `GCS Silver`) to Marquez on port `5000`.
+* **dbt Lineage:** Wrapped dbt runs with `openlineage-dbt` (`dbt-ol` CLI) to parse compile-time artifacts (`manifest.json`, `run_results.json`, `catalog.json`) and project column-level relationships in the Marquez graph.
+
+#### 2. Data Governance & Security
+We established a robust security and schema governance framework:
+* **dbt Data Contracts:** Configured native **dbt Data Contracts (dbt 1.5+)** in `models/marts/schema.yml` for our gold tables (`fct_orders`, `dim_customers`) with `contract: { enforced: true }`. This strictly checks types and constraints at compile-time to prevent schema drift.
+* **Sensitive Data Classification:** Annotated customer columns with `meta: { pii: true, classification: confidential }` to establish an audit-ready metadata catalog.
+* **Dynamic PII Data Masking:** Developed a database-agnostic dbt macro `mask_pii()` to dynamically redact or redact-mask sensitive identifiers (`customer_id`, `customer_unique_id`) in non-production environments based on target execution profiles.
+
+#### 3. Data Observability (dbt Elementary)
+To automatically detect quality anomalies and monitor SLA breaches:
+* **dbt Elementary Integration:** Installed the `elementary-data/elementary` package in `packages.yml` and enabled `on-run-end` hooks in `dbt_project.yml`.
+* **Quality Auditing:** Elementary continuously tracks volume anomalies, table freshness, schema drift, and dbt test historical runs inside a dedicated `elementary` database schema for real-time observability.

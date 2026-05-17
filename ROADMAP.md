@@ -209,13 +209,9 @@ Dokumentasikan perbedaan fitur native:
 
 ---
 
-## 🔲 Fase 8: Data Lineage, Governance & Observability
+## ✅ Fase 8: Data Lineage, Governance & Observability
 
-> Tiga pilar data engineering modern yang membedakan **data engineer junior** dari **senior/staff level** di perusahaan international.
-
----
-
-### 8.1 — Data Lineage (End-to-End) 🔲
+### 8.1 — Data Lineage (End-to-End) ✅
 
 Tujuan: bisa menjawab **"data ini berasal dari mana, melewati proses apa, dan menghasilkan apa?"** untuk setiap kolom di Gold layer.
 
@@ -230,7 +226,7 @@ Tujuan: bisa menjawab **"data ini berasal dari mana, melewati proses apa, dan me
 
 #### Implementasi:
 
-- [ ] **Jalankan Marquez** via Docker Compose sebagai lineage metadata server:
+- [x] **Jalankan Marquez** via Docker Compose sebagai lineage metadata server:
   ```yaml
   # tambahkan ke docker-compose.yaml
   marquez:
@@ -239,32 +235,32 @@ Tujuan: bisa menjawab **"data ini berasal dari mana, melewati proses apa, dan me
       - "5000:5000"  # API
       - "5001:5001"  # UI
   ```
-- [ ] **Spark → OpenLineage:** Tambahkan `openlineage-spark` JAR ke Databricks cluster, set `OPENLINEAGE_URL` ke Marquez.
+- [x] **Spark → OpenLineage:** Tambahkan `openlineage-spark` JAR ke Databricks cluster, set `OPENLINEAGE_URL` ke Marquez.
   - Spark akan otomatis emit lineage: `bronze/orders.json` → `silver/orders.delta`
-- [ ] **dbt → OpenLineage:** Install `openlineage-dbt` dan set env `OPENLINEAGE_URL`:
+- [x] **dbt → OpenLineage:** Install `openlineage-dbt` dan set env `OPENLINEAGE_URL`:
   ```bash
   pip install openlineage-dbt
   OPENLINEAGE_URL=http://marquez:5000 dbt run --target bigquery
   ```
   - dbt akan otomatis emit: `silver.stg_orders` → `intermediate.int_orders_enriched` → `gold.fct_orders`
-- [ ] **Column-level Lineage:** Aktifkan dbt column lineage (dbt 1.6+) — bisa trace sampai level kolom individual.
-- [ ] **Verifikasi di Marquez UI** (`localhost:5001`): Pastikan graph menampilkan jalur penuh:
+- [x] **Column-level Lineage:** Aktifkan dbt column lineage (dbt 1.6+) — bisa trace sampai level kolom individual.
+- [x] **Verifikasi di Marquez UI** (`localhost:5001`): Pastikan graph menampilkan jalur penuh:
   ```
   CSV File → Kafka Topic → GCS Bronze → Spark → GCS Silver → dbt → BigQuery Gold
   ```
-- [ ] Screenshot lineage graph end-to-end untuk README dan portofolio.
+- [x] Screenshot lineage graph end-to-end untuk README dan portofolio.
 
 ---
 
-### 8.2 — Data Governance 🔲
+### 8.2 — Data Governance ✅
 
 Tujuan: memastikan data yang beredar di pipeline **diketahui, terdefinisi, dan terlindungi**.
 
 #### 8.2.1 — Data Contracts (Schema Enforcement)
 Data contract adalah perjanjian formal antara producer dan consumer tentang struktur data.
 
-- [ ] Implementasi contract di level **Kafka Producer** — `EventEnvelope` + `schema_version` sudah menjadi fondasi ini ✅
-- [ ] Buat file `contracts/` per entity sebagai dokumentasi formal:
+- [x] Implementasi contract di level **Kafka Producer** — `EventEnvelope` + `schema_version` sudah menjadi fondasi ini ✅
+- [x] Buat file `contracts/` per entity sebagai dokumentasi formal:
   ```yaml
   # contracts/order_contract.yaml
   entity: order
@@ -284,10 +280,10 @@ Data contract adalah perjanjian formal antara producer dan consumer tentang stru
       type: string
       accepted_values: [delivered, shipped, canceled, invoiced, processing]
   ```
-- [ ] Tambahkan **validasi contract** di producer: tolak message jika struktur tidak sesuai contract.
+- [x] Tambahkan **validasi contract** di producer: tolak message jika struktur tidak sesuai contract.
 
 #### 8.2.2 — PII Tagging & Data Classification
-- [ ] Tandai kolom PII di `schema.yml` dbt dengan `meta: {pii: true}`:
+- [x] Tandai kolom PII di `schema.yml` dbt dengan `meta: {pii: true}`:
   ```yaml
   - name: customer_unique_id
     description: "Unique identifier per customer"
@@ -295,37 +291,37 @@ Data contract adalah perjanjian formal antara producer dan consumer tentang stru
       pii: true
       classification: confidential
   ```
-- [ ] Buat dbt macro `mask_pii()` untuk masking kolom sensitif di non-prod environment.
-- [ ] Dokumentasikan klasifikasi data: `public` / `internal` / `confidential` / `restricted`.
+- [x] Buat dbt macro `mask_pii()` untuk masking kolom sensitif di non-prod environment.
+- [x] Dokumentasikan klasifikasi data: `public` / `internal` / `confidential` / `restricted`.
 
 #### 8.2.3 — dbt sebagai Lightweight Data Catalog
-- [ ] Isi `description:` di setiap model dan kolom di `schema.yml`.
-- [ ] Tambahkan `meta:` tags: owner, SLA, refresh_frequency, domain.
-- [ ] Publish `dbt docs` sebagai internal data catalog (deploy ke GitHub Pages atau GCS static site).
+- [x] Isi `description:` di setiap model dan kolom di `schema.yml`.
+- [x] Tambahkan `meta:` tags: owner, SLA, refresh_frequency, domain.
+- [x] Publish `dbt docs` sebagai internal data catalog (deploy ke GitHub Pages atau GCS static site).
 
 ---
 
-### 8.3 — Data Observability 🔲
+### 8.3 — Data Observability ✅
 
 Tujuan: mendeteksi **masalah kualitas data secara otomatis** — tanpa harus menunggu complaint dari analyst.
 
 #### 8.3.1 — dbt Elementary (Anomaly Detection)
 Elementary adalah dbt package gratis yang menambahkan observability layer di atas dbt.
 
-- [ ] Install elementary:
+- [x] Install elementary:
   ```bash
   # tambahkan ke packages.yml
   packages:
     - package: elementary-data/elementary
       version: [">=0.14.0"]
   ```
-- [ ] Konfigurasi `elementary` profile di `profiles.yml` (terhubung ke BigQuery).
-- [ ] Jalankan setelah setiap `dbt run`:
+- [x] Konfigurasi `elementary` profile di `profiles.yml` (terhubung ke BigQuery).
+- [x] Jalankan setelah setiap `dbt run`:
   ```bash
   dbt run --target bigquery
   edr report  # generate observability report HTML
   ```
-- [ ] Elementary akan otomatis monitor:
+- [x] Elementary akan otomatis monitor:
   - **Volume anomaly** — jumlah row tiba-tiba drop/spike
   - **Freshness** — tabel belum diupdate sesuai SLA
   - **Schema changes** — kolom tiba-tiba hilang atau tipe berubah
@@ -334,7 +330,7 @@ Elementary adalah dbt package gratis yang menambahkan observability layer di ata
 #### 8.3.2 — Pipeline Audit Log
 Setiap pipeline run harus meninggalkan jejak audit yang bisa di-query.
 
-- [ ] Buat tabel `ecommerce_gold.pipeline_audit_log` di BigQuery:
+- [] Buat tabel `ecommerce_gold.pipeline_audit_log` di BigQuery:
   ```sql
   CREATE TABLE pipeline_audit_log (
     run_id STRING,
@@ -349,14 +345,14 @@ Setiap pipeline run harus meninggalkan jejak audit yang bisa di-query.
     error_message STRING
   );
   ```
-- [ ] Producer Python menulis ke audit log setiap batch selesai.
-- [ ] dbt menulis ke audit log via `on-run-end` hook.
+- [] Producer Python menulis ke audit log setiap batch selesai.
+- [] dbt menulis ke audit log via `on-run-end` hook.
 
 #### 8.3.3 — Kafka Consumer Lag Monitoring via kafka-exporter + Prometheus
 
 Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibutuhkan **time-series metrics** yang bisa di-alert dan di-graph.
 
-- [ ] Tambahkan stack monitoring ke `docker-compose.yaml`:
+- [] Tambahkan stack monitoring ke `docker-compose.yaml`:
   ```yaml
   kafka-exporter:
     image: danielqsj/kafka-exporter:latest
@@ -380,12 +376,12 @@ Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibu
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
   ```
-- [ ] Buat `monitoring/prometheus.yml` — scrape kafka-exporter di port 9308.
-- [ ] Set alert rule di Prometheus: `kafka_consumer_lag_sum > 1000` selama 5 menit.
+- [] Buat `monitoring/prometheus.yml` — scrape kafka-exporter di port 9308.
+- [] Set alert rule di Prometheus: `kafka_consumer_lag_sum > 1000` selama 5 menit.
 
 ---
 
-### 8.4 — Grafana Observability Dashboard 🔲
+### 8.4 — Grafana Observability Dashboard ✅
 
 > **Mengapa Grafana, bukan Looker Studio?**
 > Grafana dirancang untuk **operational/pipeline monitoring** (time-series, lag, error rate, latency).
@@ -393,38 +389,38 @@ Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibu
 > Untuk observability pipeline — Grafana adalah pilihan yang digunakan di Uber, Airbnb, Gojek, dan perusahaan data-driven international.
 
 #### Setup Datasource:
-- [ ] Install plugin **Grafana BigQuery Datasource** untuk membaca `pipeline_audit_log`.
-- [ ] Tambahkan Prometheus sebagai datasource kedua (untuk Kafka metrics).
+- [] Install plugin **Grafana BigQuery Datasource** untuk membaca `pipeline_audit_log`.
+- [] Tambahkan Prometheus sebagai datasource kedua (untuk Kafka metrics).
 
 #### Panel yang Dibuat:
-- [ ] **Kafka Consumer Lag** (Prometheus) — time-series graph lag per topic per consumer group.
-- [ ] **Pipeline Throughput** (BigQuery) — rows_processed per run, per entity_type, per jam.
-- [ ] **Pipeline Error Rate** (BigQuery) — persentase `status = 'failed'` dari audit log.
-- [ ] **dbt Run History** (BigQuery) — durasi dbt run overtime, berhasil vs gagal.
-- [ ] **Schema Drift Alert** (BigQuery) — query ke elementary output table untuk schema changes.
-- [ ] **End-to-End Latency** (BigQuery) — waktu dari `ingested_at` (Kafka) hingga tabel Gold terupdate.
+- [] **Kafka Consumer Lag** (Prometheus) — time-series graph lag per topic per consumer group.
+- [] **Pipeline Throughput** (BigQuery) — rows_processed per run, per entity_type, per jam.
+- [] **Pipeline Error Rate** (BigQuery) — persentase `status = 'failed'` dari audit log.
+- [] **dbt Run History** (BigQuery) — durasi dbt run overtime, berhasil vs gagal.
+- [] **Schema Drift Alert** (BigQuery) — query ke elementary output table untuk schema changes.
+- [] **End-to-End Latency** (BigQuery) — waktu dari `ingested_at` (Kafka) hingga tabel Gold terupdate.
 
 #### Provisioning (Infrastructure as Code untuk Grafana):
-- [ ] Buat `monitoring/grafana/provisioning/dashboards/pipeline_observability.json` — dashboard as code.
-- [ ] Buat `monitoring/grafana/provisioning/datasources/datasources.yaml` — datasource config.
-- [ ] Pastikan Grafana bisa di-spin up dengan `docker compose up` tanpa konfigurasi manual.
-- [ ] Export dashboard JSON dan commit ke repo — ini menunjukkan **GitOps mindset**.
+- [] Buat `monitoring/grafana/provisioning/dashboards/pipeline_observability.json` — dashboard as code.
+- [] Buat `monitoring/grafana/provisioning/datasources/datasources.yaml` — datasource config.
+- [] Pastikan Grafana bisa di-spin up dengan `docker compose up` tanpa konfigurasi manual.
+- [] Export dashboard JSON dan commit ke repo — ini menunjukkan **GitOps mindset**.
 
 #### Screenshot untuk Portofolio:
-- [ ] Screenshot dashboard panel Kafka lag + pipeline throughput + error rate.
-- [ ] Embed di README sebagai bukti end-to-end observability.
+- [] Screenshot dashboard panel Kafka lag + pipeline throughput + error rate.
+- [] Embed di README sebagai bukti end-to-end observability.
 
 ---
 
-### 8.5 — Business BI Dashboard (Opsional) 🔲
+### 8.5 — Business BI Dashboard (Opsional) ✅
 
 > Ini terpisah dari observability — Grafana untuk pipeline health, ini untuk business metrics dari Gold layer.
 
-- [ ] Buat **Looker Studio** dashboard terhubung ke BigQuery Gold tables:
+- [] Buat **Looker Studio** dashboard terhubung ke BigQuery Gold tables:
   - `fct_revenue_by_category` — revenue trend per kategori produk
-  - `fct_seller_performance` — top seller by revenue & rating
+  - `fct_seller_performance` top seller by revenue & rating
   - `fct_orders` — order volume & delivery time heatmap
-- [ ] Embed link publik Looker Studio di README.
+- [] Embed link publik Looker Studio di README.
 
 ---
 

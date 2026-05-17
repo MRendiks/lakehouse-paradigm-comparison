@@ -41,5 +41,33 @@ services:
     depends_on:
       - kafka
 
+  marquez-db:
+    image: postgres:14
+    container_name: lakehouse-marquez-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez_password
+    volumes:
+      - marquez_db_data:/var/lib/postgresql/data
+
+  marquez:
+    image: marquezproject/marquez:latest
+    container_name: lakehouse-marquez
+    ports:
+      - "5000:5000"  # API
+      - "5001:5001"  # UI
+    environment:
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez_password
+    depends_on:
+      - marquez-db
+
 volumes:
   kafka_data:
+  marquez_db_data:
