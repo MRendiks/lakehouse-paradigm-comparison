@@ -1,8 +1,9 @@
 import logging
 from infisical_sdk import InfisicalSDKClient
-from config.settings import settings
+from source.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
 
 class InfisicalManager:
     def __init__(self, base_url: str):
@@ -63,18 +64,55 @@ class InfisicalManager:
         """
         try:
             logger.info("Fetching configuration from Infisical...")
-            
+
             settings_obj.KAFKA_BOOTSTRAP_SERVERS = self._get_secret_value(
                 secret_name="KAFKA_BOOTSTRAP_SERVERS", environment_slug=environment_slug
             )
             settings_obj.GCP_PROJECT_ID = self._get_secret_value(
-                secret_name="GCP_PROJECT_ID", environment_slug=environment_slug, default=""
+                secret_name="GCP_PROJECT_ID",
+                environment_slug=environment_slug,
+                default="",
             )
             settings_obj.GCP_SERVICE_ACCOUNT_JSON = self._get_secret_value(
-                secret_name="GCP_SERVICE_ACCOUNT_JSON", environment_slug=environment_slug, default=""
+                secret_name="GCP_SERVICE_ACCOUNT_JSON",
+                environment_slug=environment_slug,
+                default="",
             )
-            
+
             logger.info("Successfully updated app settings from Infisical.")
         except Exception as e:
             logger.error(f"Failed to load app settings from Infisical: {e}")
             raise
+
+
+def bootstrap_settings(env: str = "dev") -> None:
+    """
+    Resolve secrets at startup: Infisical first, fallback to .env.
+
+    Strategy:
+        1. If INFISICAL_MACHINE_ID, INFISICAL_MACHINE_SECRET, and INFISICAL_PROJECT_ID
+           are all set → fetch secrets from Infisical and hydrate `settings`.
+        2. Otherwise → skip. `settings` already holds values from .env via pydantic-settings.
+
+    Args:
+        env: Infisical environment slug matching the project config ('dev'|'staging'|'prod').
+    """
+    infisical_ready = all(
+        [
+            settings.INFISICAL_MACHINE_ID,
+            settings.INFISICAL_MACHINE_SECRET,
+            settings.INFISICAL_PROJECT_ID,
+        ]
+    )
+
+    if infisical_ready:
+        logger.info(
+            f"Infisical credentials detected — fetching secrets for env='{env}'."
+        )
+        manager = InfisicalManager(base_url=settings.INFISICAL_URL)
+        manager.load_app_settings(environment_slug=env, settings_obj=settings)
+        print(settings)
+    else:
+        logger.info(
+            "Infisical credentials not set — using values from .env / environment variables."
+        )

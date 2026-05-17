@@ -1,16 +1,14 @@
 """
-controller/producer.py — Typer CLI Entry Point for the Kafka Producer
-
 Responsibility:
     Parse CLI arguments and delegate execution to CsvKafkaProducerService.
     This file contains ZERO business logic — it is a pure CLI adapter.
 
 Commands:
-    engine       Run the full ingestion pipeline (all mapped CSV files).
+    batch       Run the full ingestion pipeline (all mapped CSV files).
     single-file  Run ingestion for a single named CSV file.
 
 Usage:
-    python -m source.main producer engine --data-dir /data/olist --env dev
+    python -m source.main producer batch --data-dir /data/olist --env dev
     python -m source.main producer single-file --filename olist_orders_dataset.csv
 """
 
@@ -21,7 +19,7 @@ app = typer.Typer(help="Kafka Producer — CSV → EventEnvelope → Kafka")
 
 
 @app.command()
-def engine(
+def batch(
     data_dir: str = typer.Option(
         ...,
         "--data-dir",
@@ -56,11 +54,16 @@ def engine(
     """
     from pathlib import Path
     from loguru import logger
+    from source.services.infisical_manager import bootstrap_settings
     from source.config.settings import settings
     from source.services.kafka_producer_svc import CsvKafkaProducerService
 
     logger.remove()
     logger.add(sys.stdout, level=log_level.upper())
+
+    bootstrap_settings(env=env)
+
+    logger.debug(settings)
 
     if not settings.KAFKA_BOOTSTRAP_SERVERS:
         logger.error(
@@ -117,11 +120,15 @@ def single_file(
     """
     from pathlib import Path
     from loguru import logger
+    from source.services.infisical_manager import bootstrap_settings
     from source.config.settings import settings
     from source.services.kafka_producer_svc import CsvKafkaProducerService
 
     logger.remove()
     logger.add(sys.stdout, level=log_level.upper())
+
+    # Resolve secrets: Infisical (if credentials set) → fallback to .env
+    bootstrap_settings(env=env)
 
     if not settings.KAFKA_BOOTSTRAP_SERVERS:
         logger.error("KAFKA_BOOTSTRAP_SERVERS is not set.")

@@ -100,12 +100,13 @@ terraform apply
 > **Note:** Ensure you have updated `project_id` in `infrastructure/gcp/terraform.tfvars` with your actual GCP Project ID.
 
 ### 4. Setup Python Environment
-Navigate to the ingestion folder and install dependencies.
+Navigate to the ingestion folder and install dependencies using `uv`.
 ```bash
 cd ../../ingestion
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-pip install -r requirements.txt
+# Install dependencies and create a virtual environment automatically
+uv sync
+# Activate the virtual environment
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 ```
 
 ### 5. Setup Local Kafka (Minikube)
@@ -120,7 +121,12 @@ chmod +x setup-minikube.sh
 Configure your local environment variables and start the pipeline.
 ```bash
 cp ../ingestion/.env.example ../ingestion/.env
-# Update .env with your Kafka broker and GCP Project ID
-cd ../ingestion/source
-python main.py
+# Update .env with your credentials and project settings
+
+cd ../ingestion
+# Run the pipeline orchestrator using uv
+uv run ingestion-run producer batch --data-dir /path/to/olist/data --env dev
+
+# Or run a single file ingestion
+uv run ingestion-run producer single-file --filename olist_orders_dataset.csv --data-dir /path/to/olist/data
 ```
