@@ -437,8 +437,8 @@ To view table descriptions, schemas, tests, and interactive lineages in your bro
 # Generate the documentation manifest
 uv run dbt docs generate --profiles-dir .
 
-# Start the interactive documentation server (opens local web interface)
-uv run dbt docs serve --profiles-dir .
+# Start the interactive documentation server (default port is 8080, can be customized using --port)
+uv run dbt docs serve --profiles-dir . --port 8085
 ```
 
 ---
