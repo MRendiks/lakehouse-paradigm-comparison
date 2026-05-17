@@ -48,7 +48,7 @@ Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 - [x] Buat `source/services/kafka_producer.py` — CSV reader → `EventEnvelope.create()` → `KafkaService.produce()`.
 - [x] Buat `source/controller/ingestion_ctl.py` — command CLI `engine` yang memanggil producer untuk semua dataset.
 - [x] Test end-to-end: Pastikan semua **8 topic** terlihat di **Kafka-UI** (`localhost:8080`) dengan pesan terkirim.
-- [ ] Verifikasi DLQ (`ecommerce.dlq.v1`) menerima message ketika produce gagal.
+- [x] Verifikasi DLQ (`ecommerce.dlq.v1`) menerima message ketika produce gagal.
 
 ### 3.3 — Kafka Consumer → GCS (Bronze) 🔲
 - [ ] Buat `source/services/kafka_consumer.py` — subscribe per topic (bukan satu consumer untuk semua).

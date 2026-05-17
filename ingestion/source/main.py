@@ -2,6 +2,7 @@ from typing import Optional
 
 import typer
 from source.controller import producer
+from source.controller import consumer_to_gcs
 
 import importlib.metadata
 
@@ -18,6 +19,7 @@ except importlib.metadata.PackageNotFoundError:
 app = typer.Typer()
 
 app.add_typer(producer.app, name="producer")
+app.add_typer(consumer_to_gcs.app, name="consumer-to-gcs")
 
 
 def _version_callback(value: bool) -> None:

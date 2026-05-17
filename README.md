@@ -130,3 +130,43 @@ uv run ingestion-run producer batch --data-dir /path/to/olist/data --env dev
 # Or run a single file ingestion
 uv run ingestion-run producer single-file --filename olist_orders_dataset.csv --data-dir /path/to/olist/data
 ```
+
+### 7. Run the Consumer (Kafka to GCS)
+To consume data from Kafka and upload it to the GCS Bronze layer, run the consumer. 
+
+**Pro Tip:** Add `GCS_BRONZE_BUCKET=your-bucket-name` to your `.env` file so you don't have to specify the `--bucket` flag manually!
+
+You can use the `stream-all` command for local development to stream all topics concurrently:
+```bash
+uv run ingestion-run consumer-to-gcs stream-all --bucket <YOUR_GCS_BRONZE_BUCKET> --env dev
+```
+
+For production or targeted streaming, run the `stream` command per topic (useful for isolated Kubernetes Pods):
+```bash
+# Orders
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.orders.v1 --entity order --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Order Items
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.order-items.v1 --entity order_item --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Payments
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.payments.v1 --entity payment --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Reviews
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.reviews.v1 --entity review --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Customers
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.customers.v1 --entity customer --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Products
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.products.v1 --entity product --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Product Categories Translation
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.product-categories.v1 --entity product_category --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Sellers
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.sellers.v1 --entity seller --bucket <YOUR_GCS_BRONZE_BUCKET>
+
+# Geolocation
+uv run ingestion-run consumer-to-gcs stream --topic ecommerce.olist.geolocation.v1 --entity geolocation --bucket <YOUR_GCS_BRONZE_BUCKET>
+```
