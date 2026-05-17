@@ -382,8 +382,8 @@ See [ROADMAP.md](./ROADMAP.md) for the full phased implementation plan.
 | Phase 1 | GCP Identity & Security (Service Account, ADC) | ✅ Done |
 | Phase 2 | Infrastructure as Code (Terraform: GCS, BigQuery) | ✅ Done |
 | Phase 3 | Ingestion Engine (Kafka Producer + GCS Consumer) | ✅ Done |
-| Phase 4 | Snowflake Configuration (GCS External Stage) | 🔄 In Progress |
-| Phase 5 | Databricks Processing (PySpark Bronze→Silver) | 🔄 In Progress |
+| Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
+| Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
 | Phase 6 | dbt Transformation (Silver→Gold, dual platform) | 🔲 Planned |
 | Phase 7 | Benchmark & Documentation | 🔲 Planned |
 | Phase 8 | Data Lineage, Governance & Observability | 🔲 Planned |

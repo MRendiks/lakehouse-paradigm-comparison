@@ -28,7 +28,7 @@ Otomatisasi pembuatan "wadah" data di GCP.
 
 ---
 
-## 🔄 Fase 3: Ingestion Engine (Python & Kafka) *(IN PROGRESS)*
+## 🔄 Fase 3: Ingestion Engine (Python & Kafka) *(DONE)*
 
 Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 
@@ -61,49 +61,41 @@ Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 
 ---
 
-## 🔲 Fase 4: Snowflake Configuration (Integration)
+## ✅ Fase 4: Snowflake Configuration (Integration)
 
-Menghubungkan Snowflake ke GCS bucket `bronze` tanpa file kunci/JSON.
+Menghubungkan Snowflake ke GCS bucket `bronze` dan `silver`.
 
-1. **Create Storage Integration** di Snowflake Worksheet:
-   ```sql
-   CREATE STORAGE INTEGRATION gcs_int
-     TYPE = EXTERNAL_STAGE
-     STORAGE_PROVIDER = 'GCS'
-     STORAGE_ALLOWED_LOCATIONS = ('gcs://nama-bronze-bucket/')
-     ENABLED = TRUE;
-   ```
-2. **Ambil Identitas Snowflake:** Jalankan `DESC INTEGRATION gcs_int;` dan catat nilai `STORAGE_GCP_SERVICE_ACCOUNT` (sebuah email GCP milik Snowflake).
-3. **Handshake di GCP:**
-   - Buka GCP Console → GCS Bucket `bronze` → tab **Permissions**.
-   - Tambahkan email Snowflake sebagai **Principal** dengan role **`Storage Object Viewer`**.
-4. **Create External Stage** di Snowflake:
-   ```sql
-   CREATE STAGE my_gcs_stage
-     URL = 'gcs://nama-bronze-bucket/'
-     STORAGE_INTEGRATION = gcs_int;
-   ```
-5. **Verifikasi:** Jalankan `LIST @my_gcs_stage;` — file JSON dari Fase 3 harus terlihat.
+- [x] **Gunakan Terraform Snowflake** (`infrastructure/snowflake`):
+   - Gunakan dual-provider (Snowflake dan Google) untuk otomatisasi penuh.
+   - Buat Database `LAKEHOUSE_RAW`, Schema, dan Warehouse.
+   - Buat `STORAGE INTEGRATION` di Snowflake.
+- [x] **Auto Handshake di GCP:**
+   - Terraform secara otomatis menarik identitas GCP Service Account bawaan Snowflake dan memberinya akses IAM `roles/storage.objectViewer` ke GCS bucket.
+- [x] **Create External Stage** di Snowflake:
+   - Terraform membuat stage eksternal yang terhubung ke bucket GCS menggunakan integration tersebut.
+- [x] **Verifikasi:** Jalankan `LIST @LAKEHOUSE_RAW.BRONZE.GCS_BRONZE_STAGE;` di Snowflake Worksheet — file NDJSON harus terlihat.
 
 ---
 
-## 🔲 Fase 5: Databricks Configuration (Processing)
+## ✅ Fase 5: Databricks Configuration (Processing)
 
-Databricks sebagai mesin pengolah Spark di atas GCS.
+Databricks digunakan untuk mentransformasi raw NDJSON menjadi format Delta Lake.
 
-1. **Cluster Setup:** Buat cluster di Databricks (gunakan *Community Edition* atau akun trial).
-2. **Setup GCS Access (Keyless):**
-   - Buat *Service Account* GCP baru untuk Databricks dengan role `Storage Object Admin` pada bucket `bronze` & `silver`.
-   - Copy isi file JSON SA → simpan sebagai *Databricks Secret* (`dbutils.secrets`).
-3. **Konfigurasi Spark di Notebook:**
-   ```python
-   spark.conf.set("fs.gs.auth.service.account.json.keyfile", dbutils.secrets.get(...))
-   ```
-4. **Tulis PySpark Job** (`transformation/spark/bronze_to_silver.py`):
-   - Baca JSON dari `bronze/` → parse & validasi skema.
-   - Lakukan transformasi (cleansing, filtering, type casting).
-   - Simpan ke `silver/` dalam format **Delta Lake** (`.delta`).
-5. **Test:** Verifikasi file Delta muncul di GCS bucket `silver`.
+- [x] **Cluster Setup:** Gunakan Databricks Serverless atau cluster biasa.
+- [x] **Setup GCS Access:**
+   - Gunakan Terraform Databricks untuk mem-provision Secret Scope (`gcp_secrets`).
+   - Inject GCP Service Account JSON key dari Terraform ke dalam Secret Scope.
+- [x] **Konfigurasi Python & Libraries:**
+   - Gunakan Python library `google-cloud-storage`, `pandas`, `pyarrow`, dan `deltalake`.
+- [x] **Tulis Driver-only Job** (`processing/databricks/bronze_to_silver.py`):
+   - Arsitektur ini dirancang khusus untuk mengatasi limitasi Databricks Serverless (di mana `spark.conf` dan *worker filesystem access* diblokir).
+   - Baca file NDJSON dari GCS Bronze secara paralel via Python Threads.
+   - Parsing dan flattening struktur `EventEnvelope` dengan `pandas`.
+   - Lakukan deduplikasi (*keep latest* berdasarkan primary key).
+   - Tulis ke `/tmp` driver node menggunakan library Rust `deltalake` (via `pyarrow`).
+   - Upload file `.delta` dari `/tmp` ke GCS Silver bucket.
+- [x] **Eksekusi:** Jalankan notebook, pantau report sukses secara *real-time* per entity.
+
 
 ---
 
