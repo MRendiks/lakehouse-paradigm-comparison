@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Staged orders dataset with standardized datatypes and schema. Resolved dynamically for BigQuery and Snowflake."
+    columns:
+      - name: order_id
+        description: "Primary key of the order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Foreign key to customer details."
+        tests:
+          - not_null
+      - name: order_status
+        description: "Status of the order transaction."
+        tests:
+          - accepted_values:
+              values: ['delivered', 'shipped', 'canceled', 'invoiced', 'processing', 'approved', 'unavailable', 'created']
+
+  - name: stg_customers
+    description: "Staged customer details, linking customer registration keys to unique identity keys."
+    columns:
+      - name: customer_id
+        description: "Primary key for a specific transaction registration."
+        tests:
+          - unique
+          - not_null
+      - name: customer_unique_id
+        description: "Unique persistent ID of the customer."
+        tests:
+          - not_null
+
+  - name: stg_order_items
+    description: "Staged order items sequence representing transaction lines."
+    columns:
+      - name: order_id
+        description: "Foreign key of the order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: order_item_sequence
+        description: "Sequence number of the item within the order."
+        tests:
+          - not_null
+
+  - name: stg_payments
+    description: "Staged order payment details, aggregating value and installment parameters."
+    columns:
+      - name: order_id
+        description: "Foreign key of the order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: payment_type
+        description: "Payment method type used."
+        tests:
+          - accepted_values:
+              values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']

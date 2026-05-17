@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: "Gold layer fact table of transactions, enriched with payments, reviews, and delivery duration benchmarks."
+    columns:
+      - name: order_id
+        description: "Primary key of the order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Customer key for the transaction."
+        tests:
+          - not_null
+      - name: total_payment_value
+        description: "Aggregated sum of all payment methods for the order."
+
+  - name: dim_customers
+    description: "Gold layer customer dimension, providing lifecycle value metrics and geographic locations."
+    columns:
+      - name: customer_unique_id
+        description: "Primary key. Unique, persistent identity of the customer."
+        tests:
+          - unique
+          - not_null
+      - name: total_orders
+        description: "Lifecycle purchase count for this customer."
+      - name: total_lifetime_value
+        description: "Total aggregated spend of the customer."
