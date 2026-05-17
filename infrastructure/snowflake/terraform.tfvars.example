@@ -1,0 +1,20 @@
+# Template untuk terraform.tfvars — AMAN di-commit ke Git.
+# Salin file ini menjadi terraform.tfvars lalu isi nilainya.
+#
+# Cara mendapatkan nilai Snowflake:
+#   snowflake_organization → jalankan di Snowflake: SELECT CURRENT_ORGANIZATION_NAME();
+#   snowflake_account      → jalankan di Snowflake: SELECT CURRENT_ACCOUNT_NAME();
+
+# ── Snowflake Auth ────────────────────────────────────────────────────────────
+snowflake_organization = "<YOUR_SNOWFLAKE_ORG>"
+snowflake_account      = "<YOUR_SNOWFLAKE_ACCOUNT>"
+snowflake_user         = "<YOUR_SNOWFLAKE_USERNAME>"
+snowflake_password     = "<YOUR_SNOWFLAKE_PASSWORD>"
+
+# ── GCP Config ────────────────────────────────────────────────────────────────
+gcp_project_id    = "<YOUR_GCP_PROJECT_ID>"
+gcs_bronze_bucket = "<YOUR_BRONZE_BUCKET_NAME>"
+
+# ── Optional Tuning ───────────────────────────────────────────────────────────
+warehouse_size         = "X-SMALL"   # X-SMALL | SMALL | MEDIUM | LARGE
+warehouse_auto_suspend = 60          # seconds before auto-suspend (cost control)
