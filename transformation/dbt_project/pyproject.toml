@@ -10,4 +10,5 @@ dependencies = [
     "dbt-snowflake>=1.11.5",
     "infisicalsdk",
     "python-dotenv>=1.0.0",
+    "elementary-data[bigquery]",
 ]

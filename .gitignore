@@ -1,6 +1,4 @@
-# -----------------------------
 # Terraform
-# -----------------------------
 # Local .terraform directories
 **/.terraform/*
 
@@ -22,9 +20,7 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# -----------------------------
 # Python / Application
-# -----------------------------
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -39,30 +35,28 @@ ENV/
 env.bak/
 venv.bak/
 
-# -----------------------------
 # dbt
-# -----------------------------
 **/target/
 **/dbt_packages/
 **/logs/
+**/.dbt/profiles.yml
+**/profiles.yml
 
-# -----------------------------
+# EDR
+**/edr_target/elementary_output.json
+
 # Spark / Databricks
-# -----------------------------
 spark-warehouse/
 metastore_db/
 derby.log
 
-# -----------------------------
 # General
-# -----------------------------
 .DS_Store
 .vscode/
 .idea/
 *.log
 resources/
 
-# -----------------------------
 kubectl*
 minikube-linux-*
 get_helm.sh

@@ -1,20 +1,7 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# dbt profiles.yml
-# Lokasi default: ~/.dbt/profiles.yml
-# Untuk local dev, bisa juga ditaruh di direktori project ini dan jalankan:
-#   dbt run --profiles-dir .
-#
-# ⚠️  FILE INI TIDAK BOLEH DI-COMMIT KE GIT (sudah ada di .gitignore)
-# Salin dari profiles.yml.example lalu isi nilainya.
-# ──────────────────────────────────────────────────────────────────────────────
 
 lakehouse_profile:
   target: bigquery  # default target (bisa dioverride: dbt run --target snowflake)
   outputs:
-
-    # ── BigQuery Target ────────────────────────────────────────────────────────
-    # Membaca dari dataset Silver GCS (via BigQuery External Table atau BigLake)
-    # Menulis Gold layer ke dataset ecommerce_gold
     bigquery:
       type: bigquery
       method: oauth                          # gunakan gcloud ADC (Application Default Credentials)
@@ -25,9 +12,6 @@ lakehouse_profile:
       timeout_seconds: 300
       priority: interactive
 
-    # ── Snowflake Target ───────────────────────────────────────────────────────
-    # Membaca dari schema SILVER di Snowflake (via External Stage)
-    # Menulis Gold layer ke schema GOLD
     snowflake:
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"       # format: orgname-accountname
@@ -39,3 +23,16 @@ lakehouse_profile:
       schema: GOLD                                         # Gold layer output schema
       threads: 4
       client_session_keep_alive: false
+
+elementary:
+  target: bigquery
+  outputs:
+    bigquery:
+      type: bigquery
+      method: oauth
+      project: project-aaa919f1-4345-401b-860
+      dataset: ecommerce_gold
+      location: asia-southeast2
+      threads: 4
+      timeout_seconds: 300
+      priority: interactive
