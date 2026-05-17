@@ -63,7 +63,10 @@ class KafkaService:
             )
 
     def _send_to_dlq(self, envelope: EventEnvelope, error: str) -> None:
-        """Send failed messages to the Dead Letter Queue."""
+        """
+        Send a failed EventEnvelope to the Dead Letter Queue.
+        Used when Kafka produce() itself raises KafkaException.
+        """
         dlq_payload = {
             "original_topic": envelope.metadata.source_topic,
             "error": error,
@@ -76,9 +79,57 @@ class KafkaService:
                 value=self._serialize(dlq_payload),
             )
             self._producer.poll(0)
-            logger.info(f"Message sent to DLQ: {OlistTopic.DLQ.value}")
+            logger.warning(
+                f"DLQ ← envelope routed | topic={OlistTopic.DLQ.value} | error={error}"
+            )
         except KafkaException as dlq_exc:
             logger.critical(f"Failed to send to DLQ: {dlq_exc}")
+
+    def produce_raw_to_dlq(
+        self,
+        raw_payload: dict,
+        original_topic: str,
+        error: str,
+        row_num: int,
+        filename: str,
+    ) -> None:
+        """
+        Send a raw (pre-envelope) payload to the DLQ.
+        Used when EventEnvelope.create() itself fails — no envelope object available.
+
+        Args:
+            raw_payload:    The original CSV row dict that failed processing.
+            original_topic: The intended target topic (string value).
+            error:          Exception message explaining why the row failed.
+            row_num:        1-based row number from the source CSV file.
+            filename:       Source CSV filename for traceability.
+        """
+        import json
+
+        dlq_payload = {
+            "original_topic": original_topic,
+            "source_file": filename,
+            "row_num": row_num,
+            "error": error,
+            "raw_payload": raw_payload,
+        }
+        try:
+            key = f"{filename}:row:{row_num}".encode("utf-8")
+            self._producer.produce(
+                topic=OlistTopic.DLQ.value,
+                key=key,
+                value=self._serialize(dlq_payload),
+            )
+            self._producer.poll(0)
+            logger.warning(
+                f"DLQ ← raw payload routed | file={filename} | "
+                f"row={row_num} | error={error}"
+            )
+        except KafkaException as dlq_exc:
+            logger.critical(
+                f"Failed to send raw payload to DLQ: {dlq_exc} | "
+                f"file={filename} | row={row_num}"
+            )
 
     @staticmethod
     def _serialize(data: dict) -> bytes:

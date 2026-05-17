@@ -176,6 +176,13 @@ class CsvKafkaProducerService:
                 logger.error(
                     f"Row #{row_num} failed | file={reader.filename} | error={exc}"
                 )
+                self._kafka.produce_raw_to_dlq(
+                    raw_payload=payload,
+                    original_topic=topic.value,
+                    error=str(exc),
+                    row_num=row_num,
+                    filename=reader.filename,
+                )
                 failed += 1
 
         logger.success(

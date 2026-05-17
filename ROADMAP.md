@@ -42,12 +42,12 @@ Membangun pipeline untuk memindahkan data dari sumber ke GCS.
 - [x] ADC (`gcloud auth application-default login`) berhasil dijalankan untuk akses GCS lokal.
 
 ### 3.2 — Kafka Producer 🔲
-- [ ] Jalankan Kafka & Kafka-UI via **Docker Compose** (sudah ada di `docker-compose.yaml`).
-- [ ] Implementasi `EventEnvelope` model — setiap message dibungkus metadata standar (`event_id`, `event_type`, `schema_version`, `checksum`).
-- [ ] Gunakan `DATASET_TOPIC_MAP` dari `constants.py` untuk routing otomatis ke topic yang tepat berdasarkan nama file CSV.
-- [ ] Buat `source/services/kafka_producer.py` — CSV reader → `EventEnvelope.create()` → `KafkaService.produce()`.
-- [ ] Buat `source/controller/ingestion_ctl.py` — command CLI `engine` yang memanggil producer untuk semua dataset.
-- [ ] Test end-to-end: Pastikan semua **8 topic** terlihat di **Kafka-UI** (`localhost:8080`) dengan pesan terkirim.
+- [x] Jalankan Kafka & Kafka-UI via **Docker Compose** (sudah ada di `docker-compose.yaml`).
+- [x] Implementasi `EventEnvelope` model — setiap message dibungkus metadata standar (`event_id`, `event_type`, `schema_version`, `checksum`).
+- [x] Gunakan `DATASET_TOPIC_MAP` dari `constants.py` untuk routing otomatis ke topic yang tepat berdasarkan nama file CSV.
+- [x] Buat `source/services/kafka_producer.py` — CSV reader → `EventEnvelope.create()` → `KafkaService.produce()`.
+- [x] Buat `source/controller/ingestion_ctl.py` — command CLI `engine` yang memanggil producer untuk semua dataset.
+- [x] Test end-to-end: Pastikan semua **8 topic** terlihat di **Kafka-UI** (`localhost:8080`) dengan pesan terkirim.
 - [ ] Verifikasi DLQ (`ecommerce.dlq.v1`) menerima message ketika produce gagal.
 
 ### 3.3 — Kafka Consumer → GCS (Bronze) 🔲
