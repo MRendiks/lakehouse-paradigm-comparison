@@ -18,6 +18,7 @@ clean-targets:
 
 on-run-end:
   - "{{ elementary.upload_run_results() }}"
+  - "{{ log_dbt_run_results(results) }}"
 
 models:
   lakehouse_transformation:
