@@ -22,10 +22,17 @@ on-run-end:
 
 models:
   lakehouse_transformation:
+    +persist_docs:
+      relation: true
+      columns: true
+
     staging:
       +materialized: view
+      +schema: staging
+    # 2. Intermediate bersifat ephemeral (tidak ditulis ke BigQuery, hanya sebagai CTE)
     intermediate:
       +materialized: ephemeral
+    # 3. Marts adalah tabel final yang akan di-materialize (di-save sebagai tabel di BigQuery)
     marts:
       +materialized: table
   elementary:
