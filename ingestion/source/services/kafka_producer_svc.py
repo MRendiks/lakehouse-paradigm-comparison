@@ -19,12 +19,15 @@ Dependencies:
     - source.services.kafka_svc.KafkaService
 """
 
+import datetime
 import uuid
+from datetime import timezone
 from pathlib import Path
 from typing import Optional
-
 from loguru import logger
 
+from source.services.audit_svc import BigQueryAuditService
+from source.config.settings import settings
 from source.mapper.handler.csv_reader import CsvReader
 from source.mapper.handler.topic_router import TopicRouter
 from source.models.event_envelope import EventEnvelope
@@ -60,6 +63,11 @@ class CsvKafkaProducerService:
         self._pipeline_run_id = pipeline_run_id or f"run-{uuid.uuid4().hex[:8]}"
         self._source_system = source_system
         self._flush_timeout = flush_timeout
+
+        self._audit_svc = BigQueryAuditService(
+            project_id=settings.GCP_PROJECT_ID,
+            credentials_json=settings.GCP_SERVICE_ACCOUNT_JSON or None,
+        )
 
         logger.info(
             f"CsvKafkaProducerService initialized | "
@@ -150,6 +158,7 @@ class CsvKafkaProducerService:
         Returns:
             {"produced": int, "failed": int}
         """
+        started_at = datetime.datetime.now(timezone.utc)
         produced = 0
         failed = 0
         reader = CsvReader(csv_path)
@@ -184,6 +193,25 @@ class CsvKafkaProducerService:
                     filename=reader.filename,
                 )
                 failed += 1
+
+        finished_at = datetime.datetime.now(timezone.utc)
+        status = "success" if failed == 0 else "partial" if produced > 0 else "failed"
+
+        try:
+            self._audit_svc.log_run(
+                run_id=self._pipeline_run_id,
+                pipeline_stage="ingestion",
+                entity_type=entity_type,
+                source_topic=topic.value,
+                rows_processed=produced,
+                rows_failed=failed,
+                started_at=started_at,
+                finished_at=finished_at,
+                status=status,
+                error_message=None if failed == 0 else f"Ingestion failed for {failed} rows.",
+            )
+        except Exception as audit_exc:
+            logger.error(f"Gagal mencatat audit log: {audit_exc}")
 
         logger.success(
             f"Finished ingestion | file={reader.filename} | "
