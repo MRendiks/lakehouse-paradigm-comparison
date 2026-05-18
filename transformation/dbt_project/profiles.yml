@@ -31,7 +31,7 @@ elementary:
       type: bigquery
       method: oauth
       project: project-aaa919f1-4345-401b-860
-      dataset: ecommerce_gold
+      dataset: elementary
       location: asia-southeast2
       threads: 4
       timeout_seconds: 300
