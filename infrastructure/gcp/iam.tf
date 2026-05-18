@@ -21,3 +21,28 @@ resource "google_project_iam_member" "snowflake_bq" {
   role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_service_account.snowflake_sa.email}"
 }
+
+# --- GRAFANA MONITORING ---
+resource "google_service_account" "grafana_sa" {
+  account_id   = "grafana-sa"
+  display_name = "Grafana Monitoring Service Account"
+}
+
+# 1. Role untuk membaca data di BigQuery
+resource "google_project_iam_member" "grafana_bq_viewer" {
+  project = var.project_id
+  role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:${google_service_account.grafana_sa.email}"
+}
+
+# 2. Role untuk menjalankan Query Jobs di BigQuery
+resource "google_project_iam_member" "grafana_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.grafana_sa.email}"
+}
+
+# 3. Generate Service Account Key secara otomatis
+resource "google_service_account_key" "grafana_key" {
+  service_account_id = google_service_account.grafana_sa.name
+}
