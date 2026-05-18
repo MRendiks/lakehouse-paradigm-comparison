@@ -62,3 +62,66 @@ models:
         tests:
           - accepted_values:
               values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+
+  - name: stg_products
+    description: "Staged product catalog details containing category names and dimensions."
+    columns:
+      - name: product_id
+        description: "Primary key of the product."
+        tests:
+          - unique
+          - not_null
+      - name: product_category_name
+        description: "Category name of the product."
+
+  - name: stg_sellers
+    description: "Staged seller registry details including geographic location details."
+    columns:
+      - name: seller_id
+        description: "Primary key of the seller."
+        tests:
+          - unique
+          - not_null
+      - name: seller_city
+        description: "City where the seller is located."
+      - name: seller_state
+        description: "State where the seller is located."
+
+  - name: stg_reviews
+    description: "Staged customer transaction review scores and comments."
+    columns:
+      - name: review_id
+        description: "Primary key of the review."
+        tests:
+          - not_null
+      - name: order_id
+        description: "Foreign key linking to the reviewed order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+      - name: review_score
+        description: "Satisfaction rating score (1-5)."
+
+  - name: stg_product_categories
+    description: "Staged translation catalog mapping native Portuguese category names to English."
+    columns:
+      - name: product_category_name
+        description: "Native Portuguese category name."
+        tests:
+          - unique
+          - not_null
+      - name: product_category_name_english
+        description: "Translated English category name."
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_geolocation
+    description: "Staged postal code geographic coordinates maps (latitude and longitude)."
+    columns:
+      - name: geolocation_zip_code_prefix
+        description: "Postal code zip code prefix."
+        tests:
+          - not_null
