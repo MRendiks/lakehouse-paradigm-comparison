@@ -1,0 +1,11 @@
+groups:
+  - name: kafka_alerts
+    rules:
+      - alert: HighKafkaConsumerLag
+        expr: sum by (consumergroup, topic) (kafka_consumergroup_lag) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Consumer Lag detected for group {{ $labels.consumergroup }}"
+          description: "Consumer group '{{ $labels.consumergroup }}' on topic '{{ $labels.topic }}' has a lag of {{ $value }} (must be < 1000)."

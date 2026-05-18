@@ -330,7 +330,7 @@ Elementary adalah dbt package gratis yang menambahkan observability layer di ata
 #### 8.3.2 — Pipeline Audit Log
 Setiap pipeline run harus meninggalkan jejak audit yang bisa di-query.
 
-- [] Buat tabel `ecommerce_gold.pipeline_audit_log` di BigQuery:
+- [x] Buat tabel `ecommerce_gold.pipeline_audit_log` di BigQuery:
   ```sql
   CREATE TABLE pipeline_audit_log (
     run_id STRING,
@@ -345,14 +345,14 @@ Setiap pipeline run harus meninggalkan jejak audit yang bisa di-query.
     error_message STRING
   );
   ```
-- [] Producer Python menulis ke audit log setiap batch selesai.
-- [] dbt menulis ke audit log via `on-run-end` hook.
+- [x] Producer Python menulis ke audit log setiap batch selesai.
+- [x] dbt menulis ke audit log via `on-run-end` hook.
 
 #### 8.3.3 — Kafka Consumer Lag Monitoring via kafka-exporter + Prometheus
 
 Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibutuhkan **time-series metrics** yang bisa di-alert dan di-graph.
 
-- [] Tambahkan stack monitoring ke `docker-compose.yaml`:
+- [x] Tambahkan stack monitoring ke `docker-compose.yaml`:
   ```yaml
   kafka-exporter:
     image: danielqsj/kafka-exporter:latest
@@ -376,8 +376,8 @@ Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibu
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
   ```
-- [] Buat `monitoring/prometheus.yml` — scrape kafka-exporter di port 9308.
-- [] Set alert rule di Prometheus: `kafka_consumer_lag_sum > 1000` selama 5 menit.
+- [x] Buat `monitoring/prometheus.yml` — scrape kafka-exporter di port 9308.
+- [x] Set alert rule di Prometheus: `kafka_consumer_lag_sum > 1000` selama 5 menit.
 
 ---
 
