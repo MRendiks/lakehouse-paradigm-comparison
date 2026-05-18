@@ -55,7 +55,10 @@ derby.log
 .vscode/
 .idea/
 *.log
-resources/
+resources/dataset/
+resources/token/
+resources/grafana/
+resources/artifact/
 
 kubectl*
 minikube-linux-*

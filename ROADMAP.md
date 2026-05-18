@@ -389,26 +389,26 @@ Kafka-UI cukup untuk debugging manual, tapi untuk observability yang proper dibu
 > Untuk observability pipeline — Grafana adalah pilihan yang digunakan di Uber, Airbnb, Gojek, dan perusahaan data-driven international.
 
 #### Setup Datasource:
-- [] Install plugin **Grafana BigQuery Datasource** untuk membaca `pipeline_audit_log`.
-- [] Tambahkan Prometheus sebagai datasource kedua (untuk Kafka metrics).
+- [x] Install plugin **Grafana BigQuery Datasource** untuk membaca `pipeline_audit_log`.
+- [x] Tambahkan Prometheus sebagai datasource kedua (untuk Kafka metrics).
 
 #### Panel yang Dibuat:
-- [] **Kafka Consumer Lag** (Prometheus) — time-series graph lag per topic per consumer group.
-- [] **Pipeline Throughput** (BigQuery) — rows_processed per run, per entity_type, per jam.
-- [] **Pipeline Error Rate** (BigQuery) — persentase `status = 'failed'` dari audit log.
-- [] **dbt Run History** (BigQuery) — durasi dbt run overtime, berhasil vs gagal.
-- [] **Schema Drift Alert** (BigQuery) — query ke elementary output table untuk schema changes.
-- [] **End-to-End Latency** (BigQuery) — waktu dari `ingested_at` (Kafka) hingga tabel Gold terupdate.
+- [x] **Kafka Consumer Lag** (Prometheus) — time-series graph lag per topic per consumer group.
+- [x] **Pipeline Throughput** (BigQuery) — rows_processed per run, per entity_type, per jam.
+- [x] **Pipeline Error Rate** (BigQuery) — persentase `status = 'failed'` dari audit log.
+- [x] **dbt Run History** (BigQuery) — durasi dbt run overtime, berhasil vs gagal.
+- [x] **Schema Drift Alert** (BigQuery) — query ke elementary output table untuk schema changes.
+- [x] **End-to-End Latency** (BigQuery) — waktu dari `ingested_at` (Kafka) hingga tabel Gold terupdate.
 
 #### Provisioning (Infrastructure as Code untuk Grafana):
-- [] Buat `monitoring/grafana/provisioning/dashboards/pipeline_observability.json` — dashboard as code.
-- [] Buat `monitoring/grafana/provisioning/datasources/datasources.yaml` — datasource config.
-- [] Pastikan Grafana bisa di-spin up dengan `docker compose up` tanpa konfigurasi manual.
-- [] Export dashboard JSON dan commit ke repo — ini menunjukkan **GitOps mindset**.
+- [x] Buat `monitoring/grafana/provisioning/dashboards/pipeline_observability.json` — dashboard as code.
+- [x] Buat `monitoring/grafana/provisioning/datasources/datasources.yaml` — datasource config.
+- [x] Pastikan Grafana bisa di-spin up dengan `docker compose up` tanpa konfigurasi manual.
+- [x] Export dashboard JSON dan commit ke repo — ini menunjukkan **GitOps mindset**.
 
 #### Screenshot untuk Portofolio:
-- [] Screenshot dashboard panel Kafka lag + pipeline throughput + error rate.
-- [] Embed di README sebagai bukti end-to-end observability.
+- [x] Screenshot dashboard panel Kafka lag + pipeline throughput + error rate.
+- [x] Embed di README sebagai bukti end-to-end observability.
 
 ---
 
