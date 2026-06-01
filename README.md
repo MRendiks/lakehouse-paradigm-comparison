@@ -1,6 +1,8 @@
 # Lakehouse Paradigm Comparison
 
-> A production-grade, end-to-end data engineering portfolio project that benchmarks **Google BigQuery** and **Snowflake** as Lakehouse paradigms, built on a unified GCS-backed Medallion Architecture (Bronze → Silver → Gold).
+> A production-grade, end-to-end Data Engineering portfolio project benchmarking **Google BigQuery** and **Snowflake** as Lakehouse paradigms, built on a unified GCS-backed Medallion Architecture (Bronze → Silver → Gold) with full observability, data quality enforcement, and a live BI dashboard.
+
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org) [![dbt](https://img.shields.io/badge/dbt-1.8-FF694B?style=flat-square&logo=dbt&logoColor=white)](https://docs.getdbt.com) [![BigQuery](https://img.shields.io/badge/BigQuery-GCP-4285F4?style=flat-square&logo=googlecloud&logoColor=white)](https://cloud.google.com/bigquery) [![Snowflake](https://img.shields.io/badge/Snowflake-Cross--Cloud-29B5E8?style=flat-square&logo=snowflake&logoColor=white)](https://snowflake.com) [![Terraform](https://img.shields.io/badge/Terraform-IaC-7B42BC?style=flat-square&logo=terraform&logoColor=white)](https://terraform.io) [![Kafka](https://img.shields.io/badge/Apache_Kafka-Streaming-231F20?style=flat-square&logo=apachekafka&logoColor=white)](https://kafka.apache.org) [![Grafana](https://img.shields.io/badge/Grafana-Observability-F46800?style=flat-square&logo=grafana&logoColor=white)](https://grafana.com)
 
 ---
 
@@ -9,53 +11,74 @@
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
+- [Data Model](#data-model)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#1-prerequisites)
-  - [GCP Authentication](#2-authenticate-with-google-cloud)
-  - [Provision Infrastructure (GCP)](#3-provision-gcp-infrastructure-terraform)
-  - [Provision Infrastructure (Databricks)](#4-provision-databricks-secrets-terraform)
-  - [Setup Local Kafka](#5-setup-local-kafka-docker)
-  - [Setup Python Environment](#6-setup-python-environment)
-  - [Run the Producer](#7-run-the-kafka-producer)
-  - [Run the Consumer](#8-run-the-consumer-kafka--gcs-bronze)
-  - [Run DBT](#9-run-dbt)
-  - [Run the Performance Benchmark](#10-run-the-performance-benchmark)
+  - [1. Prerequisites](#1-prerequisites)
+  - [2. GCP Authentication](#2-authenticate-with-google-cloud)
+  - [3. Provision GCP Infrastructure](#3-provision-gcp-infrastructure-terraform)
+  - [4. Provision Databricks Secrets](#4-provision-databricks-secrets-terraform)
+  - [5. Provision Snowflake Infrastructure](#5-provision-snowflake-infrastructure-terraform)
+  - [6. Setup Local Kafka](#6-setup-local-kafka-docker)
+  - [7. Setup Python Environment](#7-setup-python-environment)
+  - [8. Run the Kafka Producer](#8-run-the-kafka-producer)
+  - [9. Run the Consumer](#9-run-the-consumer-kafka--gcs-bronze)
+  - [10. Run dbt Transformations](#10-run-dbt-transformations)
+  - [11. Run the Performance Benchmark](#11-run-the-performance-benchmark)
+  - [12. Observability & Monitoring](#12-observability--monitoring)
 - [Kafka Topics](#kafka-topics)
+- [Design Decisions](#design-decisions)
 - [Roadmap](#roadmap)
 
 ---
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         DATA SOURCES                                │
-│              Olist E-Commerce CSVs (8 Entities)                     │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ Python Producer (EventEnvelope + DLQ)
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    MESSAGE BROKER (Kafka)                           │
-│     8 Topics (per entity) + 1 DLQ  │  Exactly-Once Semantics       │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ Python Consumer (Batching + Time Flush)
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              GCS BRONZE LAYER  (Raw, Append-Only)                   │
-│   {entity}/year={Y}/month={M}/day={D}/batch_{uuid}.json (NDJSON)   │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ Databricks (PySpark + Delta Lake)
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              GCS SILVER LAYER  (Cleaned, Deduplicated)              │
-│                   Delta Lake format (.delta)                        │
-└───────────┬───────────────────────────────────────┬─────────────────┘
-            │ dbt (BigQuery adapter)                │ dbt (Snowflake adapter)
-            ▼                                       ▼
-┌────────────────────────┐             ┌────────────────────────────┐
-│  BigQuery GOLD LAYER   │             │   Snowflake GOLD LAYER     │
-│  ecommerce_gold.*      │             │   LAKEHOUSE_RAW.BRONZE.*   │
-└────────────────────────┘             └────────────────────────────┘
+```mermaid
+flowchart TD
+    DS["📁 DATA SOURCES\nOlist E-Commerce CSVs\n8 Entities"]
+
+    DS -->|"Python Producer\nEventEnvelope + DLQ"| K
+
+    subgraph K["🔀 MESSAGE BROKER"]
+        K1["Apache Kafka\n9 Topics + 1 DLQ\nExactly-Once Semantics"]
+    end
+
+    K -->|"Python Consumer\nBatch + Time-Window Flush"| BRZ
+
+    subgraph GCS["☁️ GCS — MEDALLION ARCHITECTURE"]
+        BRZ["🥉 BRONZE LAYER\nRaw · Append-Only · NDJSON\n{entity}/year={Y}/month={M}/day={D}/batch_{uuid}.json"]
+        SLV["🥈 SILVER LAYER\nCleaned · Deduplicated\nDelta Lake format"]
+        BRZ -->|"Databricks\nPySpark + Delta Lake"| SLV
+    end
+
+    SLV -->|"dbt\nBigQuery adapter"| BQ
+    SLV -->|"dbt\nSnowflake adapter"| SF
+
+    subgraph GOLD["🥇 GOLD LAYER — Analytical Stores"]
+        BQ["BigQuery\necommerce_gold.*\n+ pipeline_audit_log"]
+        SF["Snowflake\nLAKEHOUSE_RAW.GOLD.*"]
+    end
+
+    BQ --> BI
+    SF --> BI
+
+    subgraph BI["📊 BI & OBSERVABILITY LAYER"]
+        LS["Looker Studio\nBusiness KPIs & Dashboards"]
+        GF["Grafana + Prometheus\nPipeline Health & Alerting"]
+    end
+
+    style DS fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style K fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style K1 fill:#0f172a,stroke:#60a5fa,color:#f8fafc
+    style GCS fill:#1e293b,stroke:#10b981,color:#f8fafc
+    style BRZ fill:#0f172a,stroke:#f59e0b,color:#f8fafc
+    style SLV fill:#0f172a,stroke:#a78bfa,color:#f8fafc
+    style GOLD fill:#1e293b,stroke:#10b981,color:#f8fafc
+    style BQ fill:#0f172a,stroke:#3b82f6,color:#f8fafc
+    style SF fill:#0f172a,stroke:#29b5e8,color:#f8fafc
+    style BI fill:#1e293b,stroke:#f59e0b,color:#f8fafc
+    style LS fill:#0f172a,stroke:#4285f4,color:#f8fafc
+    style GF fill:#0f172a,stroke:#f46800,color:#f8fafc
 ```
 
 ---
@@ -64,15 +87,19 @@
 
 | Layer | Tool | Purpose |
 |---|---|---|
-| **Infrastructure** | Terraform | GCS Buckets, BigQuery, IAM, Databricks Secrets |
-| **Secret Management** | Infisical Cloud | Centralized secrets (Kafka, GCP keys) |
+| **Infrastructure** | Terraform | GCS Buckets, BigQuery, Snowflake, IAM, Databricks Secrets |
+| **Secret Management** | Infisical Cloud | Centralized secrets (Kafka, GCP, Snowflake) |
 | **Message Broker** | Apache Kafka (Docker) | Per-entity topic streaming with DLQ |
 | **Ingestion** | Python + `confluent-kafka` | Producer (CSV→Kafka) & Consumer (Kafka→GCS) |
 | **Processing** | Databricks (Serverless) + PySpark | Bronze→Silver transformation with Delta Lake |
-| **Transformation** | dbt | Silver→Gold SQL models (BigQuery + Snowflake) |
+| **Transformation** | dbt Core | Silver→Gold SQL models (BigQuery + Snowflake) |
+| **Data Quality** | dbt tests + Elementary | Schema contracts, `not_null`, `unique`, `relationships` |
 | **Analytical Store** | Google BigQuery | Gold layer for GCP paradigm |
 | **Analytical Store** | Snowflake | Gold layer for cross-cloud paradigm |
+| **Observability** | Grafana + Prometheus | Pipeline health metrics & alerting |
+| **BI Dashboard** | Looker Studio | Business KPI dashboards from Gold layer |
 | **Package Manager** | `uv` + `hatchling` | Fast, modern Python dependency management |
+| **CI/CD** | GitHub Actions | Terraform fmt/validate + Ruff lint + pytest |
 
 ---
 
@@ -82,8 +109,10 @@
 lakehouse-paradigm-comparison/
 ├── .gitignore
 ├── README.md
-├── ROADMAP.md
+├── BENCHMARK_REPORT.md             # Auto-generated benchmark results
 ├── docker-compose.yaml             # Kafka + Kafka-UI (local dev)
+├── contracts/
+│   └── order_contract.yaml         # Data contract definition (schema enforcement)
 ├── scripts/
 │   ├── auth-setup.sh               # gcloud ADC authentication helper
 │   └── setup-minikube.sh           # Kafka on local K8s (optional)
@@ -144,16 +173,53 @@ lakehouse-paradigm-comparison/
 │   └── dbt_project/
 │       ├── dbt_project.yml
 │       ├── profiles.yml            # BigQuery + Snowflake targets
+│       ├── packages.yml            # dbt-utils + elementary
+│       ├── run_dbt_infisical.py    # Infisical-powered dbt runner
+│       ├── benchmark.py            # Dual-paradigm query benchmark script
 │       ├── models/
 │       │   ├── staging/            # stg_orders, stg_customers, ...
 │       │   ├── intermediate/       # int_orders_enriched, ...
-│       │   └── marts/              # fct_orders, dim_customers, ...
-│       ├── tests/
-│       └── macros/
+│       │   └── marts/              # fct_orders, dim_customers, mart_*
+│       ├── macros/
+│       │   └── col.sql             # Cross-warehouse column accessor macro
+│       └── tests/
+├── monitoring/
+│   ├── prometheus.yml              # Prometheus scrape config
+│   ├── alert_rules.yml             # Alerting rules (pipeline lag, errors)
+│   └── grafana/
+│       └── dashboards/             # Grafana dashboard JSON exports
 └── .github/
     └── workflows/
         ├── terraform-ci.yml        # Terraform fmt + validate on PR
         └── python-ci.yml           # Ruff lint + pytest on PR
+```
+
+---
+
+## Data Model
+
+The Gold Layer follows a **Star Schema** pattern optimized for analytical queries on BigQuery and Snowflake.
+
+```
+                      ┌─────────────────┐
+                      │  dim_customers  │
+                      │  (customer_id)  │
+                      └────────┬────────┘
+                               │
+┌──────────────┐    ┌──────────▼──────────┐    ┌──────────────────┐
+│ dim_products │    │      fct_orders      │    │   dim_sellers    │
+│ (product_id) │◄───│  (order_id FK hub)  │───►│  (seller_id)     │
+└──────────────┘    └──────────┬──────────┘    └──────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   fct_order_items   │
+                    │   (line-item grain) │
+                    └─────────────────────┘
+
+Aggregated Marts:
+├── mart_category_performance   → Revenue & volume by product category
+├── mart_seller_performance     → Revenue, freight & orders by seller
+└── pipeline_audit_log          → ETL run metadata & observability
 ```
 
 ---
@@ -191,7 +257,7 @@ terraform plan
 terraform apply
 ```
 
-This provisions: GCS Buckets (bronze, silver, gold), BigQuery Dataset, and IAM roles.
+This provisions: GCS Buckets (bronze, silver, gold), BigQuery Dataset (`ecommerce_gold`), and IAM roles.
 
 ### 4. Provision Databricks Secrets (Terraform)
 
@@ -209,12 +275,14 @@ This creates a `gcp_secrets` Secret Scope in your Databricks Workspace and injec
 ### 5. Provision Snowflake Infrastructure (Terraform)
 
 Get your Snowflake org and account name by running these queries in a Snowflake Worksheet:
+
 ```sql
 SELECT CURRENT_ORGANIZATION_NAME();
 SELECT CURRENT_ACCOUNT_NAME();
 ```
 
 Then:
+
 ```bash
 cd infrastructure/snowflake
 cp terraform.tfvars.example terraform.tfvars
@@ -232,6 +300,7 @@ This provisions in a **single `terraform apply`**:
 - External Stage `GCS_BRONZE_STAGE` ready to query
 
 Verify by running in Snowflake Worksheet:
+
 ```sql
 LIST @LAKEHOUSE_RAW.BRONZE.GCS_BRONZE_STAGE;
 ```
@@ -247,7 +316,7 @@ docker compose up -d
 # Kafka UI:     http://localhost:8080
 ```
 
-### 6. Setup Python Environment
+### 7. Setup Python Environment
 
 ```bash
 cd ingestion
@@ -263,7 +332,7 @@ cp .env.example .env
 
 > **Note:** `GCS_BRONZE_BUCKET` in `.env` is auto-picked up by the consumer — no need to pass `--bucket` on every command.
 
-### 7. Run the Kafka Producer
+### 8. Run the Kafka Producer
 
 Produces all 8 Olist CSV datasets to their respective Kafka topics:
 
@@ -277,7 +346,7 @@ uv run ingestion-run producer batch --data-dir /path/to/olist/data --env dev
 uv run ingestion-run producer single-file --filename olist_orders_dataset.csv --data-dir /path/to/olist/data
 ```
 
-### 8. Run the Consumer (Kafka → GCS Bronze)
+### 9. Run the Consumer (Kafka → GCS Bronze)
 
 **Local development** — stream all topics concurrently (one thread per topic):
 
@@ -356,6 +425,142 @@ uv run ingestion-run consumer-to-gcs stream \
 
 ---
 
+### 10. Run dbt Transformations
+
+Navigate to the dbt project directory first:
+
+```bash
+cd transformation/dbt_project
+```
+
+#### 10a. BigQuery Execution
+
+BigQuery external tables are fully managed via Terraform. No manual table initialization is required.
+
+```bash
+# Run the dbt models to materialize Gold tables in ecommerce_gold
+uv run dbt run --profiles-dir . --target bigquery
+
+# Run data quality tests (not_null, unique, accepted_values, relationships)
+uv run dbt test --profiles-dir . --target bigquery
+```
+
+#### 10b. Snowflake Execution
+
+Snowflake external tables must be registered over the GCS Silver stage before executing models.
+
+```bash
+# Set Snowflake authentication environment variables
+$env:SNOWFLAKE_ACCOUNT="GHVRUEH-TX23081"
+$env:SNOWFLAKE_USER="RENDAKS"
+$env:SNOWFLAKE_PASSWORD="Your_Password_Here"
+
+# Initialize/recreate Snowflake external tables over Delta GCS stage
+uv run dbt run-operation create_external_tables --profiles-dir . --target snowflake
+
+# Run dbt models to materialize Gold tables in the GOLD schema
+uv run dbt run --profiles-dir . --target snowflake
+
+# Run data quality tests
+uv run dbt test --profiles-dir . --target snowflake
+```
+
+#### 10c. Snowflake via Infisical (Recommended for Teams)
+
+A custom Python runner `run_dbt_infisical.py` automatically loads credentials from Infisical Cloud — no manual `$env:` variable setting required:
+
+```bash
+# From: transformation/dbt_project
+
+# Run dbt models securely via Infisical secrets
+uv run python run_dbt_infisical.py run --profiles-dir . --target snowflake
+
+# Run data quality tests securely via Infisical secrets
+uv run python run_dbt_infisical.py test --profiles-dir . --target snowflake
+
+# Register external tables via Infisical secrets
+uv run python run_dbt_infisical.py run-operation create_external_tables --profiles-dir . --target snowflake
+```
+
+#### 10d. Generate Interactive Documentation & Lineage Graph
+
+```bash
+# Generate the documentation manifest
+uv run dbt docs generate --profiles-dir .
+
+# Start the interactive documentation server (default port 8080)
+uv run dbt docs serve --profiles-dir . --port 8085
+```
+
+Open `http://localhost:8085` to explore table descriptions, schemas, tests, and the interactive lineage DAG.
+
+---
+
+### 11. Run the Performance Benchmark
+
+Executes an automated dual-paradigm benchmark comparing BigQuery and Snowflake over 10 distinct analytical workloads:
+
+```bash
+cd transformation/dbt_project
+
+# Connects to both warehouses, runs 10 queries, outputs a markdown report
+uv run python benchmark.py
+```
+
+The script measures **Cold Run Latency** vs. **Warm Run Latency** for:
+
+1. `fct_orders` Full Scan
+2. Group By Aggregation (Customer LTV)
+3. Multi-Table Join Enrichment
+4. Window Function (Customer RFM Analysis)
+5. Complex Subquery Semi-Joins
+6. Rolling 30-Day Moving Average
+7. High-Cardinality String Parsing
+8. Complex Pivot Cross-Tabulation
+9. Star Schema Join Reconstruction
+10. Heavy Mathematical Percentiles & Median
+
+Results are compiled in [BENCHMARK_REPORT.md](./BENCHMARK_REPORT.md).
+
+---
+
+### 12. Observability & Monitoring
+
+This project includes a full observability stack covering both **pipeline health** (Grafana) and **dbt data quality** (Elementary).
+
+#### 12a. Grafana + Prometheus (Pipeline Health)
+
+```bash
+# From the project root — start observability stack
+docker compose up -d
+
+# Access dashboards:
+# Grafana:    http://localhost:3000  (admin / admin)
+# Prometheus: http://localhost:9090
+```
+
+Grafana dashboards monitor:
+- **Kafka Consumer Lag** — detect stalled consumers per topic
+- **Pipeline Throughput** — rows processed per hour per entity
+- **Pipeline Audit Log** — ETL run success/failure rates from `ecommerce_gold.pipeline_audit_log`
+- **Alerting** — Prometheus alert rules for lag > threshold
+
+#### 12b. Elementary (dbt Data Observability)
+
+[Elementary](https://docs.elementary-data.com/) is integrated as a dbt package and tracks data quality over time:
+
+```bash
+cd transformation/dbt_project
+
+# Run Elementary report after dbt run
+uv run edr report
+
+# Or send to a Slack channel (if configured)
+uv run edr send-report --slack-token <TOKEN> --slack-channel-name <CHANNEL>
+```
+
+---
+
 ## Kafka Topics
 
 | Topic | Entity | Group ID Pattern |
@@ -372,121 +577,6 @@ uv run ingestion-run consumer-to-gcs stream \
 | `ecommerce.dlq.v1` | *(Dead Letter Queue)* | — |
 
 > **Group ID versioning:** Bumping the version suffix (e.g. `v0.0.1` → `v0.0.2`) resets the consumer offset, allowing full historical replay without touching Kubernetes manifests.
-
-
----
-
-### 9. Run DBT
-
-To run and test the dbt transformation pipeline manually across both warehouse paradigms, navigate to the dbt project folder and execute the following instructions:
-
-```bash
-# 1. Navigate to the dbt project directory
-cd transformation/dbt_project
-```
-
-### 1. Google BigQuery Execution
-BigQuery external tables are fully managed via Terraform. No manual table initialization is required.
-
-```bash
-# Run the dbt models to materialize gold tables in ecommerce_gold
-uv run dbt run --profiles-dir . --target bigquery
-
-# Run data quality tests (not_null, unique, accepted_values, relationships)
-uv run dbt test --profiles-dir . --target bigquery
-```
-
-### 2. Snowflake Execution
-Snowflake external tables must be registered over the GCS Silver stage before executing models.
-
-```bash
-# Set Snowflake authentication environment variables
-$env:SNOWFLAKE_ACCOUNT="GHVRUEH-TX23081"
-$env:SNOWFLAKE_USER="RENDAKS"
-$env:SNOWFLAKE_PASSWORD="Your_Password_Here"
-
-# Initialize/recreate Snowflake external tables over Delta GCS stage
-uv run dbt run-operation create_external_tables --profiles-dir . --target snowflake
-
-# Run dbt models to materialize gold tables in the GOLD schema
-uv run dbt run --profiles-dir . --target snowflake
-
-# Run data quality tests
-uv run dbt test --profiles-dir . --target snowflake
-```
-
-### 3. Advanced: Snowflake Credential Automation
-#### Centralized Secrets Management via Infisical (Recommended for Enterprise)
-We have implemented a custom Python-SDK-based runner `run_dbt_infisical.py` in the dbt project folder. This runner automatically loads Universal Auth credentials from `ingestion/.env`, connects securely to your Infisical Cloud dev vault, fetches your Snowflake parameters, and triggers the dbt process in a fully isolated runtime context:
-
-```bash
-# From: transformation/dbt_project
-
-# Run dbt models securely via Infisical secrets
-uv run python run_dbt_infisical.py run --profiles-dir . --target snowflake
-
-# Run data quality tests securely via Infisical secrets
-uv run python run_dbt_infisical.py test --profiles-dir . --target snowflake
-
-# Run dbt-operation to register external tables
-uv run python run_dbt_infisical.py run-operation create_external_tables --profiles-dir . --target snowflake
-```
-
-### 4. Generate Interactive Documentation & Lineage Graph
-To view table descriptions, schemas, tests, and interactive lineages in your browser:
-
-```bash
-# Generate the documentation manifest
-uv run dbt docs generate --profiles-dir .
-
-# Start the interactive documentation server (default port is 8080, can be customized using --port)
-uv run dbt docs serve --profiles-dir . --port 8085
-```
-
-### 10. Run the Performance Benchmark
-
-To execute the automated dual-paradigm performance benchmark comparing Google BigQuery and Snowflake over 10 distinct analytical workloads:
-
-```bash
-# 1. Navigate to the dbt project directory
-cd transformation/dbt_project
-
-# 2. Execute the benchmarking script
-# This connects to both warehouses, executes 10 queries, and generates a dynamic markdown report
-uv run python benchmark.py
-```
-
-The script will measure **Cold Run Latency** (reading directly from cloud storage files) vs. **Warm Run Latency** (utilizing caching layers) for:
-1. `fct_orders` Full Scan
-2. Group By Aggregation (Customer LTV)
-3. Multi-Table Join Enrichment
-4. Window Function (Customer RFM Analysis)
-5. Complex Subquery Semi-Joins
-6. Rolling 30-Day Moving Average
-7. High-Cardinality String Parsing
-8. Complex Pivot Cross-Tabulation
-9. Star Schema Join Reconstruction
-10. Heavy Mathematical Percentiles & Median
-
-The detailed report will be compiled dynamically in [BENCHMARK_REPORT.md](./BENCHMARK_REPORT.md).
-
----
-
-## Roadmap
-
-See [ROADMAP.md](./ROADMAP.md) for the full phased implementation plan.
-
-| Phase | Description | Status |
-|---|---|---|
-| Phase 1 | GCP Identity & Security (Service Account, ADC) | ✅ Done |
-| Phase 2 | Infrastructure as Code (Terraform: GCS, BigQuery) | ✅ Done |
-| Phase 3 | Ingestion Engine (Kafka Producer + GCS Consumer) | ✅ Done |
-| Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
-| Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
-| Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
-| Phase 7 | Benchmark & Documentation | ✅ Done |
-| Phase 8 | Data Lineage, Governance & Observability | ✅ Done |
-| Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
 
 ---
 
@@ -510,22 +600,43 @@ The `infrastructure/databricks/` module treats Databricks Secret Scopes as Infra
 Bronze is the **immutable raw history** of all events. Deduplication happens in the Silver layer via Spark `MERGE` (Delta Lake UPSERT), which is the standard Medallion Architecture pattern used at companies like Uber, Airbnb, and Gojek.
 
 ### Phase 6: Dual-Paradigm dbt Strategy & Lessons Learned
-In Phase 6, we successfully proved the portability of **a single dbt codebase** running simultaneously on both **Google BigQuery** and **Snowflake** while querying the exact same Delta Lake tables stored on GCS. Key architectural strategies and lessons learned include:
+
+In Phase 6, we proved the portability of **a single dbt codebase** running simultaneously on both **Google BigQuery** and **Snowflake** while querying the same Delta Lake tables on GCS. Key lessons:
 
 1. **External Table Paradigm Mismatch:**
-   * **BigQuery:** Natively integrates with Delta Lake (`source_format = "DELTA_LAKE"`), dynamically exposing all transaction fields as flat, first-class columns (`order_id`, `customer_id`, etc.) without manual schema definition.
-   * **Snowflake:** Despite utilizing the `TABLE_FORMAT = DELTA` option to read transaction logs, Snowflake exposes Parquet rows inside a single `VARIANT` column named `VALUE`.
-   * **Our Solution:** We created a custom `{{ col('field_name', 'data_type') }}` macro that dynamically detects the active target warehouse:
-     * For BigQuery: `cast(field_name as data_type)`
-     * For Snowflake: `cast(value:field_name as data_type)`
-     This custom abstraction keeps our staging models completely DRY, clean, and 100% portable without any SQL duplication!
+   - **BigQuery:** Natively integrates with Delta Lake (`source_format = "DELTA_LAKE"`), exposing all transaction fields as flat, first-class columns.
+   - **Snowflake:** Despite `TABLE_FORMAT = DELTA`, Snowflake exposes Parquet rows inside a single `VARIANT` column named `VALUE`.
+   - **Solution:** A custom `{{ col('field_name', 'data_type') }}` macro that dynamically detects the active warehouse:
+     - For BigQuery: `cast(field_name as data_type)`
+     - For Snowflake: `cast(value:field_name as data_type)`
 
 2. **Reserved Keywords & Case-Sensitivity (Snowflake):**
-   * The word `ORDER` is a highly reserved keyword in SQL. Snowflake throws syntax compilation errors on unquoted references to `order`. Thus, the external table must be explicitly capitalized and double-quoted: `LAKEHOUSE_RAW.SILVER."ORDER"`.
-   * In `sources.yml`, we configured `quoting: { identifier: true }` specifically for the `ORDER` table to ensure dbt automatically generates correctly escaped queries.
+   - `ORDER` is a reserved SQL keyword. Snowflake requires explicit quoting: `LAKEHOUSE_RAW.SILVER."ORDER"`.
+   - In `sources.yml`, we configured `quoting: { identifier: true }` for the `ORDER` source table.
 
 3. **Snowflake Delta Lake External Table Properties:**
-   * Registering external tables with the `DELTA` table format in Snowflake requires strict property combinations:
-     * **`AUTO_REFRESH = false`** is mandatory because Delta Lake external tables do not support automated cloud messaging refresh patterns.
-     * **`REFRESH_ON_CREATE = false`** is required, instructing Snowflake to query transaction logs (`_delta_log/`) dynamically during query-time.
-     * The `INTEGRATION` property is redundant at the table creation level and was omitted since the external table automatically inherits the `STORAGE_INTEGRATION` from the parent stage (`GCS_SILVER_STAGE`).
+   - `AUTO_REFRESH = false` is mandatory — Delta Lake external tables don't support automated cloud messaging refresh.
+   - `REFRESH_ON_CREATE = false` instructs Snowflake to query `_delta_log/` dynamically at query-time.
+   - The `INTEGRATION` property at table level is redundant; it is inherited from the parent stage.
+
+---
+
+## Roadmap
+
+See [ROADMAP.md](./resources/artifact/ROADMAP.md) for the full phased implementation plan.
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 1 | GCP Identity & Security (Service Account, ADC) | ✅ Done |
+| Phase 2 | Infrastructure as Code (Terraform: GCS, BigQuery, Snowflake) | ✅ Done |
+| Phase 3 | Ingestion Engine (Kafka Producer + GCS Consumer) | ✅ Done |
+| Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
+| Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
+| Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
+| Phase 7 | Benchmark & Documentation | ✅ Done |
+| Phase 8 | Data Lineage, Governance & Observability (Grafana + Elementary) | ✅ Done |
+| Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
+
+---
+
+*Built as a production-grade portfolio project to demonstrate end-to-end Data Engineering competencies on modern cloud platforms.*
