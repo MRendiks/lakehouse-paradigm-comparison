@@ -200,26 +200,49 @@ lakehouse-paradigm-comparison/
 
 The Gold Layer follows a **Star Schema** pattern optimized for analytical queries on BigQuery and Snowflake.
 
-```
-                      ┌─────────────────┐
-                      │  dim_customers  │
-                      │  (customer_id)  │
-                      └────────┬────────┘
-                               │
-┌──────────────┐    ┌──────────▼──────────┐    ┌──────────────────┐
-│ dim_products │    │      fct_orders      │    │   dim_sellers    │
-│ (product_id) │◄───│  (order_id FK hub)  │───►│  (seller_id)     │
-└──────────────┘    └──────────┬──────────┘    └──────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │   fct_order_items   │
-                    │   (line-item grain) │
-                    └─────────────────────┘
+```mermaid
+flowchart TB
+    %% Dimension Tables
+    DC["👤 dim_customers\n─────────────────\nPK: customer_id\ncustomer_city\ncustomer_state\ntotal_lifetime_value\navg_lifetime_review_score"]
 
-Aggregated Marts:
-├── mart_category_performance   → Revenue & volume by product category
-├── mart_seller_performance     → Revenue, freight & orders by seller
-└── pipeline_audit_log          → ETL run metadata & observability
+    DP["📦 dim_products\n─────────────────\nPK: product_id\nproduct_category_name\nproduct_category_name_english\nproduct_weight_g"]
+
+    DS["🏪 dim_sellers\n─────────────────\nPK: seller_id\nseller_city\nseller_state"]
+
+    %% Fact Tables
+    FO["🧾 fct_orders\n─────────────────\nPK: order_id\nFK: customer_id\norder_status\norder_purchase_timestamp\ndelivery_time_days\ndelta_delivery_vs_estimated_days\ntotal_payment_value\navg_review_score"]
+
+    FOI["📋 fct_order_items\n─────────────────\nFK: order_id\nFK: product_id\nFK: seller_id\nprice\nfreight_value\ntotal_item_value"]
+
+    %% Mart Tables
+    MCP["📊 mart_category_performance\n─────────────────\nproduct_category_name\ntotal_orders\ntotal_items_sold\ntotal_revenue\naverage_item_price"]
+
+    MSP["📈 mart_seller_performance\n─────────────────\nPK: seller_id\nseller_city · seller_state\ntotal_orders_fulfilled\ntotal_revenue\naverage_item_price"]
+
+    PAL["🔍 pipeline_audit_log\n─────────────────\nrun_id · entity_type\nrows_processed\nstatus · duration_seconds\nfinished_at"]
+
+    %% Star Schema Relationships
+    DC -->|"1 ──── N"| FO
+    FO -->|"1 ──── N"| FOI
+    FOI -->|"N ──── 1"| DP
+    FOI -->|"N ──── 1"| DS
+
+    %% Mart derivations (dashed)
+    FOI -.->|"aggregated by category"| MCP
+    FOI -.->|"aggregated by seller"| MSP
+
+    %% Audit log standalone
+    PAL:::audit
+
+    %% Styling
+    classDef dim fill:#1e3a5f,stroke:#60a5fa,color:#f8fafc
+    classDef fact fill:#1a3a2a,stroke:#10b981,color:#f8fafc
+    classDef mart fill:#2d1f4a,stroke:#a78bfa,color:#f8fafc
+    classDef audit fill:#3a2210,stroke:#f59e0b,color:#f8fafc
+
+    class DC,DP,DS dim
+    class FO,FOI fact
+    class MCP,MSP mart
 ```
 
 ---
@@ -618,25 +641,3 @@ In Phase 6, we proved the portability of **a single dbt codebase** running simul
    - `AUTO_REFRESH = false` is mandatory — Delta Lake external tables don't support automated cloud messaging refresh.
    - `REFRESH_ON_CREATE = false` instructs Snowflake to query `_delta_log/` dynamically at query-time.
    - The `INTEGRATION` property at table level is redundant; it is inherited from the parent stage.
-
----
-
-## Roadmap
-
-See [ROADMAP.md](./resources/artifact/ROADMAP.md) for the full phased implementation plan.
-
-| Phase | Description | Status |
-|---|---|---|
-| Phase 1 | GCP Identity & Security (Service Account, ADC) | ✅ Done |
-| Phase 2 | Infrastructure as Code (Terraform: GCS, BigQuery, Snowflake) | ✅ Done |
-| Phase 3 | Ingestion Engine (Kafka Producer + GCS Consumer) | ✅ Done |
-| Phase 4 | Snowflake Configuration (GCS External Stage) | ✅ Done |
-| Phase 5 | Databricks Processing (PySpark Bronze→Silver) | ✅ Done |
-| Phase 6 | dbt Transformation (Silver→Gold, dual platform) | ✅ Done |
-| Phase 7 | Benchmark & Documentation | ✅ Done |
-| Phase 8 | Data Lineage, Governance & Observability (Grafana + Elementary) | ✅ Done |
-| Phase 9 | Multi-Cloud Extension (AWS S3 + Redshift, Azure ADLS) | 🔲 Planned |
-
----
-
-*Built as a production-grade portfolio project to demonstrate end-to-end Data Engineering competencies on modern cloud platforms.*
