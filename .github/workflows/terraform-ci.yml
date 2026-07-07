@@ -1,29 +1,32 @@
-name: 'Terraform CI'
+name: Terraform CI
 
 on:
-  push:
+  pull_request:
     paths:
       - 'infrastructure/**'
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  validate:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: ['infrastructure/gcp', 'infrastructure/databricks', 'infrastructure/snowflake']
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8"
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ./infrastructure/gcp
+      - name: Terraform fmt
+        working-directory: ${{ matrix.dir }}
+        run: terraform fmt -check -recursive
 
-      - name: Terraform Validate
+      - name: Terraform init
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: ${{ matrix.dir }}
         run: terraform validate
-        working-directory: ./infrastructure/gcp
-
-      - name: Terraform Plan
-        run: terraform plan
-        working-directory: ./infrastructure/gcp

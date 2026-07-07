@@ -63,3 +63,6 @@ resources/artifact/
 kubectl*
 minikube-linux-*
 get_helm.sh
+
+# for AI
+.claude
