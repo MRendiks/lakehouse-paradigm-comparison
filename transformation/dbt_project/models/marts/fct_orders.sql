@@ -1,5 +1,25 @@
+{{
+  config(
+    materialized='incremental',
+    unique_key='order_id',
+    partition_by={
+      "field": "order_purchase_timestamp",
+      "data_type": "timestamp",
+      "granularity": "month"
+    },
+    incremental_strategy='merge',
+    on_schema_change='sync_all_columns'
+  )
+}}
+
 with enriched_orders as (
     select * from {{ ref('int_orders_enriched') }}
+    {% if is_incremental() %}
+    -- Only process new orders that arrived since the last run
+    where order_purchase_timestamp >= (
+        select max(order_purchase_timestamp) from {{ this }}
+    )
+    {% endif %}
 )
 
 select
