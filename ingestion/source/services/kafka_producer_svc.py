@@ -32,6 +32,7 @@ from source.mapper.handler.csv_reader import CsvReader
 from source.mapper.handler.topic_router import TopicRouter
 from source.models.event_envelope import EventEnvelope
 from source.services.kafka_svc import KafkaService
+from source.core.contract_validator import ContractValidator, ContractValidationError
 
 
 class CsvKafkaProducerService:
@@ -55,6 +56,7 @@ class CsvKafkaProducerService:
         pipeline_run_id: Optional[str] = None,
         source_system: str = "olist-csv-producer",
         flush_timeout: float = 30.0,
+        contract_dir: Optional[str] = None,
     ) -> None:
         self._kafka = KafkaService(bootstrap_servers=kafka_bootstrap)
         self._router = TopicRouter()
@@ -74,6 +76,10 @@ class CsvKafkaProducerService:
             f"env={ingestion_env} | run_id={self._pipeline_run_id} | "
             f"data_dir={self._data_dir}"
         )
+        
+        self._validators: dict[str, ContractValidator] = {}
+        if contract_dir:
+            self._load_contracts(Path(contract_dir))
 
     def run(self) -> dict:
         """
@@ -133,6 +139,12 @@ class CsvKafkaProducerService:
         self._kafka.flush(timeout=self._flush_timeout)
         return stats
 
+    def _load_contracts(self, contract_dir: Path) -> None:
+        """Load all YAML contract files from directory."""
+        for contract_file in contract_dir.glob("*.yaml"):
+            validator = ContractValidator(contract_file)
+            self._validators[validator.entity] = validator
+    
     # Private helpers
     def _discover_csv_files(self) -> list[Path]:
         """Return all CSV files under data_dir sorted by name for deterministic ordering."""
@@ -170,6 +182,9 @@ class CsvKafkaProducerService:
 
         for row_num, payload in reader.iter_rows():
             try:
+                if entity_type in self._validators:
+                    self._validators[entity_type].validate(payload, row_num=row_num)
+                    
                 envelope = EventEnvelope.create(
                     topic=topic,
                     entity_type=entity_type,

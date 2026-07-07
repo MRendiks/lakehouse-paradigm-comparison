@@ -1,23 +1,23 @@
-# 🗺️ Roadmap: 5 Area Perbaikan Lakehouse Project
+# 🗺️ Roadmap: 5 Lakehouse Project Improvements
 
-> Disusun berdasarkan evaluasi Senior Data Engineer terhadap `lakehouse-paradigm-comparison`.
-> Setiap improvement dilengkapi langkah-langkah detail yang bisa langsung dieksekusi.
+> Based on a Senior Data Engineer evaluation of `lakehouse-paradigm-comparison`.
+> Each improvement includes detailed, copy-paste-ready steps you can execute immediately.
 
 ---
 
-## Daftar Isi
+## Table of Contents
 
 1. [Fix CI/CD Pipeline (Mismatch Tools)](#1-fix-cicd-pipeline)
-2. [Tambahkan Real Test Coverage](#2-tambahkan-real-test-coverage)
-3. [Enforce Data Contracts dengan Validasi Runtime](#3-enforce-data-contracts)
-4. [Implement Incremental Models untuk dbt](#4-implement-incremental-models)
-5. [Hapus Secrets & Hardcoded IDs](#5-hapus-secrets--hardcoded-ids)
+2. [Add Real Test Coverage](#2-add-real-test-coverage)
+3. [Enforce Data Contracts with Runtime Validation](#3-enforce-data-contracts)
+4. [Implement Incremental Models for dbt](#4-implement-incremental-models)
+5. [Remove Secrets & Hardcoded IDs](#5-remove-secrets--hardcoded-ids)
 
 ---
 
 ## 1. Fix CI/CD Pipeline
 
-**Problem**: CI menggunakan `flake8` + `requirements.txt`, tapi project pakai `ruff` + `uv` + `pyproject.toml`.
+**Problem**: CI uses `flake8` + `requirements.txt`, but the project uses `ruff` + `uv` + `pyproject.toml`.
 
 ### 1.1 — Update Python CI
 
@@ -112,7 +112,7 @@ jobs:
         run: terraform validate
 ```
 
-### 1.3 — Verifikasi Lokal
+### 1.3 — Local Verification
 
 ```bash
 cd ingestion
@@ -123,13 +123,13 @@ uv run pytest tests/ -v
 
 ---
 
-## 2. Tambahkan Real Test Coverage
+## 2. Add Real Test Coverage
 
-**Problem**: Test hanya placeholder `self.assertTrue(True)`.
+**Problem**: Tests are only placeholder `self.assertTrue(True)`.
 
-### 2.1 — Unit Test untuk EventEnvelope
+### 2.1 — Unit Test for EventEnvelope
 
-File baru: `ingestion/tests/unit/test_event_envelope.py`
+New file: `ingestion/tests/unit/test_event_envelope.py`
 
 ```python
 import pytest
@@ -215,9 +215,9 @@ class TestEventEnvelope:
         assert "payload" in msg
 ```
 
-### 2.2 — Unit Test untuk TopicRouter
+### 2.2 — Unit Test for TopicRouter
 
-File baru: `ingestion/tests/unit/test_topic_router.py`
+New file: `ingestion/tests/unit/test_topic_router.py`
 
 ```python
 import pytest
@@ -272,9 +272,9 @@ class TestTopicRouter:
             router.resolve_or_raise("nonexistent.csv")
 ```
 
-### 2.3 — Unit Test untuk CsvReader
+### 2.3 — Unit Test for CsvReader
 
-File baru: `ingestion/tests/unit/test_csv_reader.py`
+New file: `ingestion/tests/unit/test_csv_reader.py`
 
 ```python
 import tempfile
@@ -388,7 +388,7 @@ class TestIntegration:
         assert uri.startswith("gs://")
 ```
 
-### 2.5 — Jalankan Tests
+### 2.5 — Run the Tests
 
 ```bash
 cd ingestion
@@ -404,18 +404,18 @@ uv run pytest tests/ -v --tb=short
 
 ## 3. Enforce Data Contracts
 
-**Problem**: `order_contract.yaml` ada tapi tidak pernah digunakan untuk validasi runtime.
+**Problem**: `order_contract.yaml` exists but is never used for runtime validation.
 
-### 3.1 — Buat Contract Validator
+### 3.1 — Create the Contract Validator
 
-File baru: `ingestion/source/core/contract_validator.py`
+New file: `ingestion/source/core/contract_validator.py`
 
 ```python
 """
-contract_validator.py — Validasi payload terhadap data contract (YAML).
+contract_validator.py — Validates payloads against data contracts (YAML).
 
-Digunakan oleh producer sebelum mengirim message ke Kafka.
-Route: Data Contract → ValidationError → DLQ (tidak masuk Kafka).
+Used by the producer before sending messages to Kafka.
+Route: Data Contract → ValidationError → DLQ (never enters Kafka).
 """
 
 from pathlib import Path
@@ -426,7 +426,7 @@ from loguru import logger
 
 
 class ContractValidationError(Exception):
-    """Exception untuk data yang melanggar kontrak."""
+    """Exception for data that violates the contract."""
 
     def __init__(self, field: str, expected: str, actual: Any, row_num: int):
         self.field = field
@@ -440,12 +440,12 @@ class ContractValidationError(Exception):
 
 class ContractValidator:
     """
-    Memuat kontrak YAML dan memvalidasi payload row-by-row.
+    Loads a YAML contract and validates payloads row-by-row.
 
     Usage:
         validator = ContractValidator("contracts/order_contract.yaml")
         validator.validate(payload, row_num=42)
-        # Raises ContractValidationError jika gagal
+        # Raises ContractValidationError on failure
     """
 
     # Mapping: YAML type string → Python type
@@ -486,10 +486,10 @@ class ContractValidator:
 
     def validate(self, payload: dict, row_num: int = 0) -> None:
         """
-        Validasi payload terhadap kontrak.
+        Validate payload against the contract.
 
-        Raises ContractValidationError pada kegagalan pertama.
-        Tidak memvalidasi field yang tidak ada di kontrak (forward-compatible).
+        Raises ContractValidationError on the first failure.
+        Does not validate fields not present in the contract (forward-compatible).
         """
         for field_name, rules in self._field_rules.items():
             value = payload.get(field_name)
@@ -535,29 +535,29 @@ class ContractValidator:
         return self._contract["version"]
 ```
 
-### 3.2 — Tambahkan `pyyaml` ke Dependencies
+### 3.2 — Add `pyyaml` to Dependencies
 
-Edit `ingestion/pyproject.toml`, tambahkan di `dependencies`:
+Edit `ingestion/pyproject.toml`, add to `dependencies`:
 
 ```toml
 dependencies = [
     # ... existing dependencies ...
-    "pyyaml>=6.0",     # ← tambahkan
+    "pyyaml>=6.0",     # ← add this
 ]
 ```
 
-### 3.3 — Integrasikan Validator ke Producer
+### 3.3 — Integrate Validator into Producer
 
 Edit `ingestion/source/services/kafka_producer_svc.py`:
 
 ```python
-# Di bagian import, tambahkan:
+# Add to imports:
 from source.core.contract_validator import ContractValidator, ContractValidationError
 
-# Di __init__, tambahkan parameter dan method:
+# In __init__, add parameter and method:
 def __init__(
     self,
-    # ... parameter existing ...
+    # ... existing parameters ...
     contract_dir: Optional[str] = None,
 ) -> None:
     # ... existing init code ...
@@ -571,7 +571,7 @@ def _load_contracts(self, contract_dir: Path) -> None:
         validator = ContractValidator(contract_file)
         self._validators[validator.entity] = validator
 
-# Di _produce_file, dalam loop iter_rows(), tambahkan sebelum EventEnvelope.create():
+# In _produce_file, inside the iter_rows() loop, add before EventEnvelope.create():
 for row_num, payload in reader.iter_rows():
     try:
         # ── Contract Validation ──
@@ -582,9 +582,9 @@ for row_num, payload in reader.iter_rows():
         # ... rest of existing code ...
 ```
 
-### 3.4 — Unit Test untuk ContractValidator
+### 3.4 — Unit Test for ContractValidator
 
-File baru: `ingestion/tests/unit/test_contract_validator.py`
+New file: `ingestion/tests/unit/test_contract_validator.py`
 
 ```python
 import tempfile
@@ -657,7 +657,7 @@ class TestContractValidator:
         }, row_num=4)
 ```
 
-### 3.5 — Jalankan Validasi
+### 3.5 — Run Validation
 
 ```bash
 cd ingestion
@@ -667,11 +667,11 @@ uv run pytest tests/unit/test_contract_validator.py -v
 
 ---
 
-## 4. Implement Incremental Models untuk dbt
+## 4. Implement Incremental Models for dbt
 
-**Problem**: Semua model dimaterialisasi sebagai `table` (full rebuild).
+**Problem**: All models are materialized as `table` (full rebuild).
 
-### 4.1 — Update `fct_orders` ke Incremental
+### 4.1 — Update `fct_orders` to Incremental
 
 Edit `transformation/dbt_project/models/marts/fct_orders.sql`:
 
@@ -693,7 +693,7 @@ Edit `transformation/dbt_project/models/marts/fct_orders.sql`:
 with enriched_orders as (
     select * from {{ ref('int_orders_enriched') }}
     {% if is_incremental() %}
-    -- Hanya proses order baru yang masuk sejak last run
+    -- Only process new orders that arrived since the last run
     where order_purchase_timestamp >= (
         select max(order_purchase_timestamp) from {{ this }}
     )
@@ -722,7 +722,7 @@ select
 from enriched_orders
 ```
 
-### 4.2 — Update `fct_order_items` ke Incremental
+### 4.2 — Update `fct_order_items` to Incremental
 
 Edit `transformation/dbt_project/models/marts/fct_order_items.sql`:
 
@@ -739,7 +739,7 @@ Edit `transformation/dbt_project/models/marts/fct_order_items.sql`:
 with source_items as (
     select * from {{ ref('stg_order_items') }}
     {% if is_incremental() %}
-    -- Order items tidak punya timestamp sendiri, join ke orders
+    -- Order items have no timestamp — join to orders for incremental filtering
     where order_id in (
         select order_id from {{ ref('fct_orders') }}
     )
@@ -757,9 +757,9 @@ select
 from source_items
 ```
 
-### 4.3 — Mart Tables: Gunakan `ref()` ke Fact Tables
+### 4.3 — Mart Tables: Use `ref()` to Fact Tables
 
-Pastikan `mart_category_performance` dan `mart_seller_performance` melakukan `ref()` ke fact/dimension tables, bukan langsung ke staging.
+Ensure `mart_category_performance` and `mart_seller_performance` use `ref()` to fact/dimension tables, not directly to staging.
 
 Edit `transformation/dbt_project/models/marts/mart_category_performance.sql`:
 
@@ -801,90 +801,90 @@ models:
       +materialized: ephemeral
 
     marts:
-      # Default: table (untuk dimensi kecil + mart)
-      # Fact tables override via config() di file SQL
+      # Default: table (for small dimensions + marts)
+      # Fact tables override via config() in SQL files
       +materialized: table
 ```
 
-### 4.5 — Verifikasi
+### 4.5 — Verify
 
 ```bash
 cd transformation/dbt_project
 
-# Full refresh pertama kali
+# Full refresh first run
 uv run dbt run --profiles-dir . --target bigquery --full-refresh
 
-# Incremental run (hanya data baru)
+# Incremental run (new data only)
 uv run dbt run --profiles-dir . --target bigquery
 
-# Cek bahwa incremental model tidak rebuild seluruh tabel
+# Confirm incremental models don't rebuild entire tables
 uv run dbt run --profiles-dir . --target bigquery
-# Output seharusnya: "1 of X PASS" atau "NO NEW DATA" untuk model incremental
+# Expected output: "1 of X PASS" or "NO NEW DATA" for incremental models
 ```
 
 ---
 
-## 5. Hapus Secrets & Hardcoded IDs
+## 5. Remove Secrets & Hardcoded IDs
 
-**Problem**: Credentials dan Project ID tersebar di dokumentasi dan kode.
+**Problem**: Credentials and Project IDs are scattered across documentation and code.
 
-### 5.1 — Bersihkan README.md
+### 5.1 — Clean README.md
 
-Di `README.md`, ganti semua credential dengan placeholder:
+In `README.md`, replace all credentials with placeholders:
 
-**Sebelum** (baris 477-478):
+**Before** (lines 477-478):
 ```bash
 $env:SNOWFLAKE_ACCOUNT="GHVRUEH-TX23081"
 $env:SNOWFLAKE_USER="RENDAKS"
 $env:SNOWFLAKE_PASSWORD="Your_Password_Here"
 ```
 
-**Sesudah**:
+**After**:
 ```bash
 $env:SNOWFLAKE_ACCOUNT="<YOUR_SNOWFLAKE_ACCOUNT>"
 $env:SNOWFLAKE_USER="<YOUR_SNOWFLAKE_USER>"
 $env:SNOWFLAKE_PASSWORD="<YOUR_SNOWFLAKE_PASSWORD>"
 ```
 
-### 5.2 — Hapus Hardcoded Project ID dari benchmark.py
+### 5.2 — Remove Hardcoded Project ID from benchmark.py
 
-Di `transformation/dbt_project/benchmark.py`, buat project ID menjadi configurable.
+In `transformation/dbt_project/benchmark.py`, make the project ID configurable.
 
-**Tambahkan di awal file** (setelah imports):
+**Add at the top of the file** (after imports):
 ```python
-# Ganti hardcoded project ID dengan environment variable
+# Replace hardcoded project ID with environment variable
 BQ_PROJECT_ID = os.getenv("BQ_PROJECT_ID", "your-gcp-project-id")
 SF_WAREHOUSE = os.getenv("SF_WAREHOUSE", "LAKEHOUSE_WH")
 ```
 
-**Ganti semua kemunculan** `project-aaa919f1-4345-401b-860` dengan `{BQ_PROJECT_ID}` dan `COMPUTE_WH` dengan `{SF_WAREHOUSE}`. Gunakan fungsi builder:
+**Replace all occurrences** of `project-aaa919f1-4345-401b-860` with `{BQ_PROJECT_ID}` and `COMPUTE_WH` with `{SF_WAREHOUSE}`. Use a builder function:
 
 ```python
 def _build_queries(bq_project_id: str) -> dict:
-    """Build query dictionary dengan project ID yang di-inject."""
+    """Build query dictionary with injected project ID."""
     BQ = bq_project_id  # alias for readability
     return {
         "fct_orders_full_scan": {
             "bq": f"SELECT COUNT(*) as cnt, SUM(total_payment_value) as sum_val, AVG(delivery_time_days) as avg_days FROM `{BQ}.ecommerce_gold.fct_orders`",
             "sf": "SELECT COUNT(*) as cnt, SUM(total_payment_value) as sum_val, AVG(delivery_time_days) as avg_days FROM LAKEHOUSE_RAW.GOLD.FCT_ORDERS"
         },
-        # ... semua query lainnya dengan pattern yang sama ...
+        # ... all other queries follow the same pattern ...
     }
 ```
 
-### 5.3 — Hapus `profiles.yml` dari Git Tracking
+### 5.3 — Remove `profiles.yml` from Git Tracking
 
 ```bash
 cd transformation/dbt_project
 
-# Hapus dari Git index tapi simpan di lokal
+# Remove from Git index but keep locally
 git rm --cached profiles.yml
 
-# Pastikan .gitignore sudah benar
-# Harus ada baris: **/profiles.yml
+# Verify .gitignore has the correct rule
+# Should contain: **/profiles.yml
 ```
 
-### 5.4 — Tambahkan `.env.example` yang Lebih Jelas
+### 5.4 — Clean Up `.env.example`
 
 Update `ingestion/.env.example`:
 
@@ -915,51 +915,51 @@ GCS_BRONZE_BUCKET=<YOUR_BRONZE_BUCKET>
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 ```
 
-### 5.5 — Verifikasi Tidak Ada Lagi Secrets
+### 5.5 — Verify No Remaining Secrets
 
 ```bash
-# Cari hardcoded project ID di seluruh repo
+# Search for hardcoded project ID across the repo
 rg "project-aaa9191f" --type-add 'all:*' -t all .
 
-# Cari potensi password
+# Search for potential passwords
 rg -i "password\s*=" --glob '!*.lock' --glob '!.git/*' .
 
-# Cari account ID Snowflake
+# Search for Snowflake account IDs
 rg "GHVRUEH" .
 rg "RENDAKS" .
 ```
 
-### 5.6 — Rotate Credentials yang Sudah Terekspos
+### 5.6 — Rotate Exposed Credentials
 
-Karena credentials sudah terlanjur muncul di git history:
+Since credentials have already appeared in git history:
 
-1. Ganti password Snowflake
+1. Change Snowflake password
 2. Regenerate Infisical Machine Secret
 3. Rotate GCP Service Account Key
-4. Force push jika menggunakan private repo
+4. Force push if using a private repo
 
 ---
 
-## 📅 Urutan Pengerjaan yang Direkomendasikan
+## 📅 Recommended Execution Order
 
-| Prioritas | Improvement | Estimasi | Dependensi |
+| Priority | Improvement | Estimate | Dependencies |
 |---|---|---|---|
-| **1** | Hapus secrets & hardcoded IDs | 1-2 jam | Tidak ada |
-| **2** | Fix CI/CD pipeline | 1 jam | Tidak ada |
-| **3** | Tambahkan real test coverage | 4-6 jam | Tidak ada |
-| **4** | Enforce data contracts | 3-4 jam | Nomor 3 (butuh test) |
-| **5** | Incremental dbt models | 2-3 jam | Tidak ada |
+| **1** | Remove secrets & hardcoded IDs | 1-2 hrs | None |
+| **2** | Fix CI/CD pipeline | 1 hr | None |
+| **3** | Add real test coverage | 4-6 hrs | None |
+| **4** | Enforce data contracts | 3-4 hrs | #3 (needs tests) |
+| **5** | Incremental dbt models | 2-3 hrs | None |
 
-**Total estimasi**: 11-16 jam (bisa dikerjakan bertahap dalam seminggu)
+**Total estimate**: 11-16 hours (can be done incrementally over a week)
 
 ---
 
-## 📊 Dampak Setelah Perbaikan
+## 📊 Impact After Improvements
 
-| Dimensi | Sebelum | Sesudah |
+| Dimension | Before | After |
 |---|---|---|
-| **CI/CD** | flake8 + requirements.txt (mismatch) | ruff + uv (match dengan tools aktual) |
-| **Test Coverage** | Placeholder `assertTrue(True)` | Unit test untuk core services |
-| **Data Contracts** | Hanya dokumentasi YAML | Validasi runtime + DLQ routing |
-| **dbt Efficiency** | Full table rebuild setiap run | Incremental merge (hanya data baru) |
-| **Security** | Credentials di git history | Bersih, semua pakai env vars |
+| **CI/CD** | flake8 + requirements.txt (mismatch) | ruff + uv (matches actual tooling) |
+| **Test Coverage** | Placeholder `assertTrue(True)` | Unit tests for core services |
+| **Data Contracts** | YAML documentation only | Runtime validation + DLQ routing |
+| **dbt Efficiency** | Full table rebuild every run | Incremental merge (new data only) |
+| **Security** | Credentials in git history | Clean, all via env vars |
