@@ -474,9 +474,9 @@ Snowflake external tables must be registered over the GCS Silver stage before ex
 
 ```bash
 # Set Snowflake authentication environment variables
-$env:SNOWFLAKE_ACCOUNT="GHVRUEH-TX23081"
-$env:SNOWFLAKE_USER="RENDAKS"
-$env:SNOWFLAKE_PASSWORD="Your_Password_Here"
+$env:SNOWFLAKE_ACCOUNT="<YOUR_SNOWFLAKE_ACCOUNT>"
+$env:SNOWFLAKE_USER="<YOUR_SNOWFLAKE_USER>"
+$env:SNOWFLAKE_PASSWORD="<YOUR_SNOWFLAKE_PASSWORD>"
 
 # Initialize/recreate Snowflake external tables over Delta GCS stage
 uv run dbt run-operation create_external_tables --profiles-dir . --target snowflake
