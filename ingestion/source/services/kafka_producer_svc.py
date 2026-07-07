@@ -196,6 +196,18 @@ class CsvKafkaProducerService:
                 self._kafka.produce(envelope)
                 produced += 1
 
+            except ContractValidationError as exc:
+                logger.warning(
+                    f"Row #{row_num} contract violation | file={reader.filename} | {exc}"
+                )
+                self._kafka.produce_raw_to_dlq(
+                    raw_payload=payload,
+                    original_topic=topic.value,
+                    error=str(exc),
+                    row_num=row_num,
+                    filename=reader.filename,
+                )
+                failed += 1
             except Exception as exc:
                 logger.error(
                     f"Row #{row_num} failed | file={reader.filename} | error={exc}"
