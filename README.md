@@ -6,8 +6,67 @@
 
 ---
 
+## 🔑 Key Findings — BigQuery vs Snowflake
+
+### ⚡ Snowflake is ~3× faster for complex multi-join queries
+
+Across 10 benchmark workloads over the same Delta Lake dataset on GCS, Snowflake consistently outperformed BigQuery on join-heavy analytical patterns:
+
+| Query Pattern | BigQuery | Snowflake | Delta |
+|---|---|---|---|
+| `multi_join_enrichment` | 1.271s | 0.438s | **2.9× faster** |
+| `subquery_semi_join` | 1.385s | 0.393s | **3.5× faster** |
+| `pivot_distribution` | 1.303s | 0.369s | **3.5× faster** |
+| `star_schema_join` (5 tables) | 1.389s | 0.410s | **3.4× faster** |
+
+Snowflake's virtual warehouse clustering and local SSD cache give it a decisive edge when queries span multiple large tables. For continuous production pipelines with heavy transforms, this adds up to significant wall-clock savings.
+
+![BigQuery vs Snowflake Benchmark](resources/bigquery_vs_snowflake_benchmark.png)
+
+> **Takeaway:** Choose **Snowflake** for high-throughput, join-heavy production pipelines.
+
+### 💸 BigQuery is dramatically cheaper for ad-hoc, low-frequency queries
+
+The two platforms operate on fundamentally different billing models:
+
+| | BigQuery | Snowflake |
+|---|---|---|
+| **Billing model** | Pay-per-scan ($5.00/TB) | Pay-per-compute-time (~$3.00/credit-hr) |
+| **Idle cost** | **$0** (serverless) | Warehouse stays active, consuming credits |
+| **Best for** | Ad-hoc analytics, sporadic queries | Continuous pipelines, predictable workloads |
+
+For the Olist dataset (~100K rows), a single BigQuery query costs **~$0.0001** while Snowflake's minimum 60-second warehouse billing cycle makes the same query materially more expensive when run in isolation.
+
+> **Takeaway:** Choose **BigQuery** for ad-hoc analytics, data exploration, and low-frequency reporting where idle time dominates.
+
+### 🔧 Solved a real-world Delta Lake cross-platform compatibility bug
+
+BigQuery and Snowflake expose Delta Lake external tables in **fundamentally different ways** — a rarely documented gap that breaks portability:
+
+| | BigQuery | Snowflake |
+|---|---|---|
+| **Delta Lake support** | Native — parses schema & exposes each column as a first-class field | Exposes all rows inside a single `VALUE` column of type `VARIANT` |
+| **Query syntax** | `SELECT order_id FROM orders` | `SELECT value:order_id FROM orders` |
+
+**The fix:** A custom dbt `{{ col() }}` macro that detects the active warehouse at runtime and emits the correct column accessor — making a **single dbt codebase run identically on both platforms** with zero manual intervention:
+
+```sql
+-- BigQuery target →   safe_cast(order_id as string)
+-- Snowflake target →  cast(value:order_id as string)
+{{ col('order_id') }}
+```
+
+This is the kind of edge case you only discover by building — not by reading docs. It demonstrates the real-world complexity of maintaining a truly multi-platform lakehouse.
+
+> **Takeaway:** Cross-platform portability is achievable, but requires warehouse-aware abstraction layers. A single `profiles.yml` switch is not enough.
+
+📄 Full benchmark methodology, all 10 query results, and cost analysis → **[BENCHMARK_REPORT.md](./BENCHMARK_REPORT.md)**
+
+---
+
 ## Table of Contents
 
+- [Key Findings — BigQuery vs Snowflake](#-key-findings--bigquery-vs-snowflake)
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
