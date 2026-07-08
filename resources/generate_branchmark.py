@@ -35,11 +35,14 @@ snowflake = [0.410, 0.393, 0.369, 0.387, 0.438, 0.303, 0.336, 0.307, 0.322, 0.55
 # Scenarios are expected to be sorted by descending speedup already.
 HIGHLIGHT_TOP_N = 5
 
-# --- Colors (high-contrast, not both blue) ---
-COLOR_BQ = "#F4511E"        # warm orange-red — BigQuery
-COLOR_SF = "#1E88E5"        # strong blue — Snowflake
-HIGHLIGHT_BG = "#FFF3E0"    # soft highlight band behind the big-gap cluster
-ANNOTATION_COLOR = "#C2410C"
+# --- Colors (high-contrast, tuned for navy dark background) ---
+BG_COLOR      = "#0D1B2E"   # navy dark — matches architecture + code images
+COLOR_BQ      = "#F4511E"    # warm orange-red — BigQuery
+COLOR_SF      = "#1E88E5"    # strong blue — Snowflake
+HIGHLIGHT_BG  = "#152238"    # slightly lighter navy for highlight band
+ANNOTATION_COLOR = "#FF8A65"
+TEXT_COLOR    = "#CCCCCC"
+TEXT_MUTED    = "#999999"
 
 OUTPUT_FILENAME = "bigquery_vs_snowflake_benchmark.png"
 
@@ -48,14 +51,16 @@ def build_chart():
     speedup = [b / s for b, s in zip(bigquery, snowflake)]
 
     fig, ax = plt.subplots(figsize=(9.2, 6.4), dpi=200)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
+
+    # ── Navy dark background (matches architecture diagram + code screenshot) ──
+    fig.patch.set_facecolor(BG_COLOR)
+    ax.set_facecolor(BG_COLOR)
 
     y = list(range(len(scenarios)))
     bar_h = 0.36
 
-    # Highlight band behind the rows with the biggest Snowflake advantage
-    ax.axhspan(-0.5, HIGHLIGHT_TOP_N - 0.5, color=HIGHLIGHT_BG, zorder=0)
+    # Highlight band — subtle navy lift, no brown tint
+    ax.axhspan(-0.4, HIGHLIGHT_TOP_N - 0.6, color=HIGHLIGHT_BG, zorder=0)
 
     bars_bq = ax.barh(
         [i + bar_h / 2 for i in y], bigquery, height=bar_h,
@@ -72,50 +77,51 @@ def build_chart():
             ax.text(
                 b.get_width() + 0.025, b.get_y() + b.get_height() / 2,
                 f"{v:.2f}s", va="center", ha="left",
-                fontsize=9, color="#333333",
+                fontsize=9, color=TEXT_COLOR,
             )
 
-    # "Nx faster" annotation for the highlighted rows
+    # Speedup badge — placed on the FAR RIGHT, past all bar labels
     for i in range(HIGHLIGHT_TOP_N):
         ax.text(
-            1.62, i, f"{speedup[i]:.1f}x faster",
-            va="center", ha="right", fontsize=9.5,
+            1.72, i, f"{speedup[i]:.1f}×",
+            va="center", ha="right", fontsize=10,
             fontweight="bold", color=ANNOTATION_COLOR, zorder=4,
         )
 
     ax.set_yticks(y)
-    ax.set_yticklabels(scenarios, fontsize=10.5, color="#222222")
+    ax.set_yticklabels(scenarios, fontsize=10.5, color=TEXT_COLOR)
     ax.invert_yaxis()
     ax.set_xlabel(
         "Cold Run Latency (seconds) — lower is better",
-        fontsize=10.5, color="#444444",
+        fontsize=10.5, color=TEXT_MUTED,
     )
-    ax.set_xlim(0, 1.75)
+    ax.set_xlim(0, 1.82)
     ax.set_title(
         "BigQuery vs Snowflake: Cold Run Query Latency\n"
-        "Snowflake is 3x+ faster on complex multi-join workloads",
-        fontsize=13.5, fontweight="bold", color="#111111", pad=16,
+        "Snowflake is 3×+ faster on complex multi-join workloads",
+        fontsize=13.5, fontweight="bold", color=TEXT_COLOR, pad=16,
     )
 
-    ax.grid(axis="x", linestyle="-", linewidth=0.6, color="#e5e5e5", zorder=1)
+    ax.grid(axis="x", linestyle="-", linewidth=0.6, color="#2A3A50", zorder=1)
     ax.set_axisbelow(True)
     for spine in ["top", "right", "left"]:
         ax.spines[spine].set_visible(False)
-    ax.spines["bottom"].set_color("#cccccc")
-    ax.tick_params(left=False)
+    ax.spines["bottom"].set_color("#2A3A50")
+    ax.tick_params(left=False, colors=TEXT_COLOR)
 
-    ax.legend(loc="lower right", frameon=False, fontsize=10.5)
+    ax.legend(loc="lower right", frameon=False, fontsize=10.5,
+              labelcolor="#FFFFFF")
 
     fig.text(
         0.5, 0.005,
         "Source: lakehouse-paradigm-comparison — github.com/MRendiks",
-        ha="center", fontsize=8, color="#999999",
+        ha="center", fontsize=8, color=TEXT_MUTED,
     )
 
     plt.tight_layout(rect=[0, 0.02, 1, 1])
 
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), OUTPUT_FILENAME)
-    plt.savefig(out_path, facecolor="white", bbox_inches="tight")
+    plt.savefig(out_path, facecolor=BG_COLOR, bbox_inches="tight")
     print(f"Saved: {out_path}")
 
 
