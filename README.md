@@ -6,6 +6,32 @@
 
 ---
 
+## Table of Contents
+
+- [Key Findings — BigQuery vs Snowflake](#-key-findings--bigquery-vs-snowflake)
+- [Architecture Overview](#architecture-overview)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Data Model](#data-model)
+- [Getting Started](#getting-started)
+  - [1. Prerequisites](#1-prerequisites)
+  - [2. GCP Authentication](#2-authenticate-with-google-cloud)
+  - [3. Provision GCP Infrastructure](#3-provision-gcp-infrastructure-terraform)
+  - [4. Provision Databricks Secrets](#4-provision-databricks-secrets-terraform)
+  - [5. Provision Snowflake Infrastructure](#5-provision-snowflake-infrastructure-terraform)
+  - [6. Setup Local Kafka](#6-setup-local-kafka-docker)
+  - [7. Setup Python Environment](#7-setup-python-environment)
+  - [8. Run the Kafka Producer](#8-run-the-kafka-producer)
+  - [9. Run the Consumer](#9-run-the-consumer-kafka--gcs-bronze)
+  - [10. Run dbt Transformations](#10-run-dbt-transformations)
+  - [11. Run the Performance Benchmark](#11-run-the-performance-benchmark)
+  - [12. Observability & Monitoring](#12-observability--monitoring)
+- [Kafka Topics](#kafka-topics)
+- [Design Decisions](#design-decisions)
+- [Roadmap](#roadmap)
+
+---
+
 ## 🔑 Key Findings — BigQuery vs Snowflake
 
 ### ⚡ Snowflake is ~3× faster for complex multi-join queries
@@ -62,33 +88,7 @@ This is the kind of edge case you only discover by building — not by reading d
 
 📄 Full benchmark methodology, all 10 query results, and cost analysis → **[BENCHMARK_REPORT.md](./BENCHMARK_REPORT.md)**
 
----
 
-## Table of Contents
-
-- [Key Findings — BigQuery vs Snowflake](#-key-findings--bigquery-vs-snowflake)
-- [Architecture Overview](#architecture-overview)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Data Model](#data-model)
-- [Getting Started](#getting-started)
-  - [1. Prerequisites](#1-prerequisites)
-  - [2. GCP Authentication](#2-authenticate-with-google-cloud)
-  - [3. Provision GCP Infrastructure](#3-provision-gcp-infrastructure-terraform)
-  - [4. Provision Databricks Secrets](#4-provision-databricks-secrets-terraform)
-  - [5. Provision Snowflake Infrastructure](#5-provision-snowflake-infrastructure-terraform)
-  - [6. Setup Local Kafka](#6-setup-local-kafka-docker)
-  - [7. Setup Python Environment](#7-setup-python-environment)
-  - [8. Run the Kafka Producer](#8-run-the-kafka-producer)
-  - [9. Run the Consumer](#9-run-the-consumer-kafka--gcs-bronze)
-  - [10. Run dbt Transformations](#10-run-dbt-transformations)
-  - [11. Run the Performance Benchmark](#11-run-the-performance-benchmark)
-  - [12. Observability & Monitoring](#12-observability--monitoring)
-- [Kafka Topics](#kafka-topics)
-- [Design Decisions](#design-decisions)
-- [Roadmap](#roadmap)
-
----
 
 ## Architecture Overview
 
@@ -439,69 +439,15 @@ uv run ingestion-run consumer-to-gcs stream-all --env dev
 **Production / Kubernetes** — one isolated pod per topic for full observability:
 
 ```bash
-# Orders
+# Pattern (replace --entity, --topic, --group-id per entity):
 uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.orders.v1 \
-  --entity order \
-  --group-id gcs-bronze-order-dev-v0.0.1 \
-  --batch-size 1000
-
-# Order Items
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.order-items.v1 \
-  --entity order_item \
-  --group-id gcs-bronze-order-item-dev-v0.0.1 \
-  --batch-size 1000
-
-# Payments
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.payments.v1 \
-  --entity payment \
-  --group-id gcs-bronze-payment-dev-v0.0.1 \
-  --batch-size 1000
-
-# Reviews
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.reviews.v1 \
-  --entity review \
-  --group-id gcs-bronze-review-dev-v0.0.1 \
-  --batch-size 1000
-
-# Customers
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.customers.v1 \
-  --entity customer \
-  --group-id gcs-bronze-customer-dev-v0.0.1 \
-  --batch-size 1000
-
-# Products
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.products.v1 \
-  --entity product \
-  --group-id gcs-bronze-product-dev-v0.0.1 \
-  --batch-size 1000
-
-# Product Categories
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.product-categories.v1 \
-  --entity product_category \
-  --group-id gcs-bronze-product-category-dev-v0.0.1 \
-  --batch-size 1000
-
-# Sellers
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.sellers.v1 \
-  --entity seller \
-  --group-id gcs-bronze-seller-dev-v0.0.1 \
-  --batch-size 1000
-
-# Geolocation
-uv run ingestion-run consumer-to-gcs stream \
-  --topic ecommerce.olist.geolocation.v1 \
-  --entity geolocation \
-  --group-id gcs-bronze-geolocation-dev-v0.0.1 \
+  --topic ecommerce.olist.<entity>.v1 \
+  --entity <entity> \
+  --group-id gcs-bronze-<entity>-dev-v0.0.1 \
   --batch-size 1000
 ```
+
+See [Kafka Topics](#kafka-topics) for the full topic → entity mapping table.
 
 > **Consumer Design:** Uploads are triggered when **either** the batch reaches `--batch-size` records **or** 30 seconds have elapsed (time-window flush), ensuring near-real-time latency without small-file explosion.
 
@@ -683,14 +629,9 @@ Bronze is the **immutable raw history** of all events. Deduplication happens in 
 
 ### Phase 6: Dual-Paradigm dbt Strategy & Lessons Learned
 
-In Phase 6, we proved the portability of **a single dbt codebase** running simultaneously on both **Google BigQuery** and **Snowflake** while querying the same Delta Lake tables on GCS. Key lessons:
+The full Delta Lake cross-platform compatibility analysis is covered in **[Key Findings — Delta Lake Compatibility](#-solved-a-real-world-delta-lake-cross-platform-compatibility-bug)**. Additional lessons from Phase 6:
 
-1. **External Table Paradigm Mismatch:**
-   - **BigQuery:** Natively integrates with Delta Lake (`source_format = "DELTA_LAKE"`), exposing all transaction fields as flat, first-class columns.
-   - **Snowflake:** Despite `TABLE_FORMAT = DELTA`, Snowflake exposes Parquet rows inside a single `VARIANT` column named `VALUE`.
-   - **Solution:** A custom `{{ col('field_name', 'data_type') }}` macro that dynamically detects the active warehouse:
-     - For BigQuery: `cast(field_name as data_type)`
-     - For Snowflake: `cast(value:field_name as data_type)`
+1. **External Table Paradigm Mismatch:** See Key Finding #3 above for the full breakdown, including the custom `{{ col() }}` macro solution.
 
 2. **Reserved Keywords & Case-Sensitivity (Snowflake):**
    - `ORDER` is a reserved SQL keyword. Snowflake requires explicit quoting: `LAKEHOUSE_RAW.SILVER."ORDER"`.
@@ -700,3 +641,23 @@ In Phase 6, we proved the portability of **a single dbt codebase** running simul
    - `AUTO_REFRESH = false` is mandatory — Delta Lake external tables don't support automated cloud messaging refresh.
    - `REFRESH_ON_CREATE = false` instructs Snowflake to query `_delta_log/` dynamically at query-time.
    - The `INTEGRATION` property at table level is redundant; it is inherited from the parent stage.
+
+---
+
+## Roadmap
+
+Planned improvements and enhancements are tracked in **[ROADMAP_IMPROVEMENTS.md](./ROADMAP_IMPROVEMENTS.md)**.
+
+Highlights:
+
+- [ ] Real test coverage for ingestion services
+- [ ] Runtime data contract enforcement
+- [ ] Incremental dbt models for fact tables
+- [ ] CI/CD alignment with `uv` + `ruff`
+- [ ] Multi-cloud storage adapter (AWS S3, Azure ADLS)
+
+---
+
+## License
+
+This project is part of a personal Data Engineering portfolio. Feel free to use it as a reference or learning resource.
