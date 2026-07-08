@@ -28,7 +28,6 @@
   - [12. Observability & Monitoring](#12-observability--monitoring)
 - [Kafka Topics](#kafka-topics)
 - [Design Decisions](#design-decisions)
-- [Roadmap](#roadmap)
 
 ---
 
@@ -641,20 +640,6 @@ The full Delta Lake cross-platform compatibility analysis is covered in **[Key F
    - `AUTO_REFRESH = false` is mandatory — Delta Lake external tables don't support automated cloud messaging refresh.
    - `REFRESH_ON_CREATE = false` instructs Snowflake to query `_delta_log/` dynamically at query-time.
    - The `INTEGRATION` property at table level is redundant; it is inherited from the parent stage.
-
----
-
-## Roadmap
-
-Planned improvements and enhancements are tracked in **[ROADMAP_IMPROVEMENTS.md](./ROADMAP_IMPROVEMENTS.md)**.
-
-Highlights:
-
-- [ ] Real test coverage for ingestion services
-- [ ] Runtime data contract enforcement
-- [ ] Incremental dbt models for fact tables
-- [ ] CI/CD alignment with `uv` + `ruff`
-- [ ] Multi-cloud storage adapter (AWS S3, Azure ADLS)
 
 ---
 
