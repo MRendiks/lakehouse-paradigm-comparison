@@ -93,43 +93,50 @@ This is the kind of edge case you only discover by building — not by reading d
 
 ```mermaid
 flowchart TD
-    subgraph INGESTION["📥 INGESTION & PROCESSING"]
-        direction LR
-        DS["📁 Data Sources\nOlist E-Commerce CSVs\n(8 Entities)"] -->|"Python Producer\nEventEnvelope + DLQ"| K
-        K["🔀 Apache Kafka\n9 Topics + 1 DLQ\nExactly-Once Semantics"] -->|"Python Consumer\nBatch + Time-Window Flush"| BRZ
-        BRZ["🥉 GCS Bronze\nRaw · Append-Only · NDJSON\nHive-Partitioned by Date"] -->|"Databricks\nPySpark + Delta Lake"| SLV
-        SLV["🥈 GCS Silver\nCleaned · Deduplicated\nDelta Lake Format"]
+    DS["📁 Data Sources\nOlist E-Commerce CSVs (8 Entities)"]
+
+    DS -->|"Python Producer"| K
+
+    subgraph K["🔀 Apache Kafka"]
+        K1["9 Topics + 1 DLQ\nExactly-Once Semantics"]
     end
 
-    SLV -->|"dbt (BigQuery adapter)"| BQ
-    SLV -->|"dbt (Snowflake adapter)"| SF
+    K -->|"Python Consumer\nBatch + Time-Window Flush"| BRZ
 
-    subgraph GOLD["🥇 GOLD LAYER & BI"]
-        direction LR
-        subgraph ANALYTICAL["Analytical Stores"]
-            BQ["BigQuery\necommerce_gold.*\n+ pipeline_audit_log"]
-            SF["Snowflake\nLAKEHOUSE_RAW.GOLD.*"]
-        end
-        subgraph BI["📊 BI & Observability"]
-            LS["Looker Studio\nBusiness KPIs"]
-            GF["Grafana + Prometheus\nPipeline Health & Alerting"]
-        end
-        BQ --> LS
-        BQ --> GF
-        SF --> LS
-        SF --> GF
+    subgraph MEDALLION["☁️ GCS — Medallion Architecture"]
+        BRZ["🥉 Bronze\nRaw · Append-Only · NDJSON\nHive-Partitioned by Date"]
+        SLV["🥈 Silver\nCleaned · Deduplicated\nDelta Lake Format"]
+        BRZ -->|"Databricks · PySpark"| SLV
     end
 
-    style INGESTION fill:#0f172a,stroke:#3b82f6,color:#f8fafc
-    style GOLD fill:#0f172a,stroke:#10b981,color:#f8fafc
-    style ANALYTICAL fill:transparent,stroke:#334155,color:#f8fafc
-    style BI fill:transparent,stroke:#334155,color:#f8fafc
+    SLV -->|"dbt · BigQuery adapter"| BQ
+    SLV -->|"dbt · Snowflake adapter"| SF
+
+    subgraph GOLD["🥇 Gold Layer — Analytical Stores"]
+        BQ["BigQuery\necommerce_gold.*\n+ pipeline_audit_log"]
+        SF["Snowflake\nLAKEHOUSE_RAW.GOLD.*"]
+    end
+
+    BQ --> LS
+    BQ --> GF
+    SF --> LS
+    SF --> GF
+
+    subgraph BI["📊 BI & Observability"]
+        LS["Looker Studio\nBusiness KPIs"]
+        GF["Grafana + Prometheus\nPipeline Health & Alerting"]
+    end
+
     style DS fill:#1e293b,stroke:#3b82f6,color:#f8fafc
     style K fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style K1 fill:#0f172a,stroke:#60a5fa,color:#f8fafc
+    style MEDALLION fill:#0f172a,stroke:#10b981,color:#f8fafc
     style BRZ fill:#1e293b,stroke:#f59e0b,color:#f8fafc
     style SLV fill:#1e293b,stroke:#a78bfa,color:#f8fafc
+    style GOLD fill:#0f172a,stroke:#10b981,color:#f8fafc
     style BQ fill:#1e293b,stroke:#3b82f6,color:#f8fafc
     style SF fill:#1e293b,stroke:#29b5e8,color:#f8fafc
+    style BI fill:#0f172a,stroke:#f59e0b,color:#f8fafc
     style LS fill:#1e293b,stroke:#4285f4,color:#f8fafc
     style GF fill:#1e293b,stroke:#f46800,color:#f8fafc
 ```
