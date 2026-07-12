@@ -647,4 +647,6 @@ The full Delta Lake cross-platform compatibility analysis is covered in **[Key F
 
 ## License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 This project is part of a personal Data Engineering portfolio. Feel free to use it as a reference or learning resource.
